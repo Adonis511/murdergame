@@ -3,6 +3,7 @@ from openai import OpenAI
 from config import Config
 import json
 import time
+from datetime import datetime
 class DMAgent:
     def __init__(self):
         # self.name = name
@@ -10,16 +11,19 @@ class DMAgent:
         # self.goals = goals
         # self.constraints = constraints
         # self.tools = tools
-        self.system_prompt = """
-        你是一名剧本杀dm，你需要完成以下工作：
-        1. 编写一个完整的剧本杀剧本，要求剧情涉及4-6个人（每个玩家扮演一个人），分别从每个人物的视角出发，完成剧本的编写，以及一个上帝视角的真实剧本，用于dm自己推进，不提供给玩家
-        2. 每个人的剧本需要分阶段，阶段初发放每个人本阶段的剧本，包含需要交谈完成各自的任务。（如谋杀案相互陈述印证）
-        3. dm在大家每阶段任务差不多完成时，开启下一个阶段
-        4. 每个阶段需要设计一些线索，在特定条件展示给玩家，为了增加代入感，创作剧本时还需生成线索的图像提示词
-        5. 在最后一个阶段大家交谈结束后，dm需要揭示所有谜题，点评每个玩家的表现
-        6. dm需要在剧本创作后附上给每个玩家的人物图画ai生成提示词，用于ai生成人物图画
-        7. 每个人每章节的字数在1000字左右
-        """
+        self.system_prompt = """你是一名专业的剧本杀DM，负责创作完整的剧本杀剧本。
+
+你需要完成以下工作：
+1. 编写一个完整的剧本杀剧本，涉及4-6个角色，包含谋杀悬疑情节
+2. 为每个角色创建分章节的剧本，剧本应该像写小说一样生动形象地展开，每章节每个人的剧本体量不少于500字
+3. 创建DM专用的上帝视角剧本，用于推进游戏
+4. 设计每阶段的线索和图像提示词
+5. 创建角色图像生成提示词
+
+重要要求：
+- 必须返回纯JSON格式，不要用markdown代码块包装
+- 确保JSON格式正确，可以直接解析
+- 所有中文内容要完整清晰"""
         self.client = OpenAI(
             base_url=Config.API_BASE,
             api_key=Config.API_KEY,
@@ -29,26 +33,106 @@ class DMAgent:
         start = time.time()
         completion = self.client.chat.completions.create(
         model="qwen-plus",
+        temperature=0.7,
         messages=[
             {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": r"""你需要生成符合要求的剧本，要求以json格式输出，包含剧本内容，线索提示词，人物图画提示词，以及每个阶段需要交谈的内容。
-            创作时你应该先思考有哪些人物，为他们取名，然后以系统上帝视角完成dm的每个章节，并思考每个章节可以给出哪些线索，再根据dm章节完成每个人物有限视角下的剧情，最后根据人物性格设计会话提示词
-            {"character1_name":["chapter1 of character1","chapter2 of character1"...],
-            "character2_name":["chapter1 of character2","chapter2 of character2"...],
-            "character3_name":["chapter1 of character3","chapter2 of character3"...],
-            "dm":["chapter1 of dm","chapter2 of dm","chapter3 of dm"...],
-            "clues:"[[clue1 in chapter1,clue2 in chapter1],[clue1 in chapter1,clue2 in chapter1]...],
-            "character1_name_image_prompt":"",
-            "character2_name_image_prompt":"",
-            "character3_name_image_prompt":"",
-            """},
+            {"role": "user", "content": """请创作一个剧本杀剧本，主题为豪门谋杀案。
+
+创作步骤：
+1. 设计4-6个角色，为他们取名
+2. 创建DM章节（上帝视角）
+3. 为每个角色创建分章节剧本
+4. 设计线索和图像提示词
+
+输出格式要求（纯JSON，不要markdown包装）：
+{
+  "title": "剧本标题",
+  "theme": "剧本主题",
+  "characters": ["角色1姓名", "角色2姓名", "角色3姓名", "角色4姓名"],
+  "角色1姓名": ["第一章剧本内容", "第二章剧本内容", "第三章剧本内容"],
+  "角色2姓名": ["第一章剧本内容", "第二章剧本内容", "第三章剧本内容"],
+  "角色3姓名": ["第一章剧本内容", "第二章剧本内容", "第三章剧本内容"],
+  "角色4姓名": ["第一章剧本内容", "第二章剧本内容", "第三章剧本内容"],
+  "dm": ["DM第一章指引", "DM第二章指引", "DM第三章指引", "真相揭露"],
+  "clues": [["第一章线索1", "第一章线索2"], ["第二章线索1", "第二章线索2"], ["第三章线索1", "第三章线索2"]],
+  "clue_image_prompts": [["第一章线索1图像提示", "第一章线索2图像提示"], ["第二章线索1图像提示", "第二章线索2图像提示"]],
+  "character_image_prompts": {
+    "角色1姓名": "角色1的AI绘图提示词",
+    "角色2姓名": "角色2的AI绘图提示词",
+    "角色3姓名": "角色3的AI绘图提示词",
+    "角色4姓名": "角色4的AI绘图提示词"
+  }
+}
+
+请直接输出JSON，不要添加任何解释或markdown格式。"""},
             ],
         )
         end = time.time()
         print(f"script generated in {end - start} seconds")
-        with open("log/script.txt", "w") as f:
-            f.write(completion.choices[0].message.content)
-        return json.loads(completion.choices[0].message.content)
+        
+        # 获取AI响应内容
+        response_content = completion.choices[0].message.content
+        print("Raw response preview:", response_content[:200])
+        
+        # 生成时间戳 (YYMMDDhhmmss格式)
+        timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+        print(f"生成时间戳: {timestamp}")
+        
+        # 确保log目录存在
+        import os
+        os.makedirs("log", exist_ok=True)
+        
+        # 使用UTF-8编码写入文件（带时间戳）
+        script_filename = f"log/script_{timestamp}.txt"
+        with open(script_filename, "w", encoding="utf-8") as f:
+            f.write(response_content)
+        print(f"原始内容已保存到: {script_filename}")
+        
+        try:
+            # 尝试解析JSON
+            # 如果响应被包在```json代码块中，需要先提取
+            if response_content.strip().startswith("```json"):
+                # 提取JSON内容
+                json_start = response_content.find("{")
+                json_end = response_content.rfind("}") + 1
+                if json_start != -1 and json_end != 0:
+                    json_content = response_content[json_start:json_end]
+                else:
+                    json_content = response_content
+            else:
+                json_content = response_content
+            
+            # 解析JSON
+            script_data = json.loads(json_content)
+            
+            # 保存格式化的JSON（带时间戳）
+            formatted_filename = f"log/script_formatted_{timestamp}.json"
+            with open(formatted_filename, "w", encoding="utf-8") as f:
+                json.dump(script_data, f, ensure_ascii=False, indent=2)
+            
+            print(f"✅ 剧本生成成功！已保存到 {formatted_filename}")
+            return script_data
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON解析失败: {e}")
+            print(f"原始响应已保存到 {script_filename}，请查看内容")
+            
+            # 尝试手动修复JSON格式
+            try:
+                # 移除可能的markdown代码块标记
+                cleaned_content = response_content.replace("```json", "").replace("```", "").strip()
+                script_data = json.loads(cleaned_content)
+                
+                formatted_filename = f"log/script_formatted_{timestamp}.json"
+                with open(formatted_filename, "w", encoding="utf-8") as f:
+                    json.dump(script_data, f, ensure_ascii=False, indent=2)
+                
+                print(f"✅ JSON修复成功！已保存到 {formatted_filename}")
+                return script_data
+                
+            except Exception as repair_error:
+                print(f"❌ JSON修复也失败: {repair_error}")
+                return None
 if __name__ == "__main__":
     dm_agent = DMAgent()
     print(dm_agent.gen_script())

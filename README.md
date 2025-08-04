@@ -29,6 +29,10 @@ murdergame/
 ├── run.py                 # 启动脚本
 ├── requirements.txt       # Python依赖
 ├── README.md             # 项目说明
+├── test/                 # 测试和演示脚本
+│   ├── README.md         # 测试目录说明
+│   ├── test_player.py    # PlayerAgent功能测试
+│   └── demo_json_query.py # JSON格式演示
 └── template/             # 模板文件
     ├── base.html         # 基础模板（导航栏、样式）
     ├── index.html        # 首页模板
@@ -284,6 +288,11 @@ Content-Type: application/json
 5. **扩展API**:
    - 在 `app.py` 中添加新的路由
    - 支持更多AI模型、第三方服务集成等
+
+6. **运行测试**:
+   - 查看 `test/` 目录中的测试脚本
+   - 运行 `python test/test_player.py` 测试AI玩家功能
+   - 运行 `python test/demo_json_query.py` 查看JSON格式演示
 
 ### 环境要求
 

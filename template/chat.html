@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}聊天室 - 聊天应用{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+<!-- Markdown渲染库 -->
+<script src="https://cdn.jsdelivr.net/npm/marked@5.1.1/marked.min.js"></script>
+<!-- 代码高亮库 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<style>
+    /* 覆盖基础模板的一些样式 */
+    body {
+        background: #f5f5f5;
+    }
+    
+    .chat-container {
+        margin-top: 0;
+        border-radius: 0;
+        box-shadow: none;
+        height: calc(100vh - 70px); /* 减去导航栏高度 */
+    }
+    
+    .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+    }
+    
+    main {
+        padding-top: 70px; /* 为固定导航栏留出空间 */
+        padding-left: 0;
+        padding-right: 0;
+        height: 100vh;
+    }
+    
+    /* 用户信息栏 */
+    .user-info {
+        background: var(--gradient);
+        color: white;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 10px;
+    }
+    
+    .user-status {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #4CAF50;
+        margin-right: 6px;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+        70% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <!-- 用户信息栏 -->
+    <div class="user-info">
+        <div class="d-flex align-items-center">
+            {% if user.avatar %}
+            <img src="{{ user.avatar }}" alt="头像" class="user-avatar">
+            {% else %}
+            <div class="user-avatar bg-white text-primary d-flex align-items-center justify-content-center fw-bold">
+                {{ user.nickname[0].upper() if user.nickname else 'U' }}
+            </div>
+            {% endif %}
+            <div>
+                <div class="fw-bold">{{ user.nickname }}</div>
+                <div class="user-status">
+                    <div class="status-dot"></div>
+                    在线
+                </div>
+            </div>
+        </div>
+        <div>
+            <button class="btn btn-outline-light btn-sm" onclick="showUserMenu()">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 聊天消息区域 -->
+    <div class="chat-messages" id="chatMessages">
+        <!-- 欢迎消息 -->
+        <div class="message bot-message">
+            <div class="message-content">
+                <h3>欢迎回来，{{ user.nickname }}！</h3>
+                <p>这是一个支持 <strong>Markdown</strong> 格式的聊天界面。</p>
+                <p>你可以发送：</p>
+                <ul>
+                    <li>普通文本</li>
+                    <li><em>斜体文本</em></li>
+                    <li><strong>粗体文本</strong></li>
+                    <li><code>代码片段</code></li>
+                    <li>以及更多Markdown格式</li>
+                </ul>
+                <p>试试发送一些消息吧！</p>
+            </div>
+            <div class="message-time">{{ format_datetime(datetime.utcnow()) }}</div>
+        </div>
+    </div>
+        
+        <!-- 工具按钮区域 -->
+        <div class="toolbar">
+            <button class="tool-btn" id="clearBtn" title="清空聊天">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                </svg>
+                清空
+            </button>
+            
+            <button class="tool-btn" id="saveBtn" title="保存聊天记录">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17,21 17,13 7,13 7,21"></polyline>
+                    <polyline points="7,3 7,8 15,8"></polyline>
+                </svg>
+                保存
+            </button>
+            
+            <button class="tool-btn" id="settingsBtn" title="设置">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                </svg>
+                设置
+            </button>
+            
+            <button class="tool-btn" id="helpBtn" title="帮助">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                帮助
+            </button>
+            
+            <button class="tool-btn" id="exportBtn" title="导出为Markdown">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14,2 14,8 20,8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10,9 9,9 8,9"></polyline>
+                </svg>
+                导出
+            </button>
+        </div>
+        
+        <!-- 输入区域 -->
+        <div class="input-area">
+            <div class="input-container">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="输入消息... (支持Markdown格式)"
+                    rows="3"
+                ></textarea>
+                <button id="sendBtn" class="send-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户菜单模态框 -->
+<div class="modal fade" id="userMenuModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">用户菜单</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('profile') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user me-2"></i>个人资料
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="loadChatHistory()">
+                        <i class="fas fa-history me-2"></i>聊天历史
+                    </a>
+                    <div class="list-group-item">
+                        <small class="text-muted">
+                            登录次数：{{ user.login_count or 0 }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 用户信息
+window.currentUser = {
+    id: {{ user.id }},
+    username: "{{ user.username | safe }}",
+    nickname: "{{ user.nickname | safe }}",
+    avatar: "{{ user.avatar | safe if user.avatar else '' }}"
+};
+
+// 显示用户菜单
+function showUserMenu() {
+    const modal = new bootstrap.Modal(document.getElementById('userMenuModal'));
+    modal.show();
+}
+
+// 加载聊天历史
+function loadChatHistory() {
+    fetch('/api/chat/history')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const messages = data.data.messages;
+                const chatMessages = document.getElementById('chatMessages');
+                
+                // 清空当前消息（保留欢迎消息）
+                const welcomeMessage = chatMessages.querySelector('.message.bot-message');
+                chatMessages.innerHTML = '';
+                if (welcomeMessage) {
+                    chatMessages.appendChild(welcomeMessage);
+                }
+                
+                // 添加历史消息
+                messages.reverse().forEach(msg => {
+                    const messageElement = createMessageElementFromData(msg);
+                    chatMessages.appendChild(messageElement);
+                });
+                
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                bootstrap.Modal.getInstance(document.getElementById('userMenuModal')).hide();
+            }
+        })
+        .catch(error => {
+            console.error('加载历史记录失败:', error);
+            alert('加载历史记录失败');
+        });
+}
+
+// 从数据创建消息元素
+function createMessageElementFromData(messageData) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${messageData.message_type}-message`;
+    messageDiv.setAttribute('data-message-id', messageData.id);
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    
+    try {
+        contentDiv.innerHTML = marked.parse(messageData.content);
+        contentDiv.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+    } catch (error) {
+        console.error('Markdown渲染错误:', error);
+        contentDiv.textContent = messageData.content;
+    }
+    
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'message-time';
+    timeDiv.textContent = new Date(messageData.timestamp).toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    messageDiv.appendChild(contentDiv);
+    messageDiv.appendChild(timeDiv);
+    
+    return messageDiv;
+}
+</script>
+
+<script src="{{ url_for('static', filename='chat.js') }}"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载完成后的初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 更新聊天界面的API调用以包含认证
+    if (window.chatInterface) {
+        // 重写发送消息方法以使用API
+        const originalSendMessage = window.chatInterface.sendMessage;
+        window.chatInterface.sendMessage = function() {
+            const text = this.messageInput.value.trim();
+            if (!text) return;
+            
+            // 添加用户消息到界面
+            this.addMessage(text, 'user');
+            
+            // 清空输入框
+            this.messageInput.value = '';
+            this.autoResizeTextarea();
+            this.updateSendButton();
+            
+            // 发送到API
+            fetch('/api/chat/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: text,
+                    session_id: window.sessionId || null
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // 添加机器人回复
+                    this.addMessage(data.data.bot_reply.content, 'bot');
+                } else {
+                    this.addMessage('抱歉，发送消息时出现错误：' + data.message, 'system');
+                }
+            })
+            .catch(error => {
+                console.error('发送消息失败:', error);
+                this.addMessage('网络错误，请检查连接后重试。', 'system');
+            });
+        };
+    }
+    
+    // 生成会话ID
+    if (!window.sessionId) {
+        window.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+});
+</script>
+{% endblock %}

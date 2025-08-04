@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}用户登录 - 聊天应用{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card animate-fade-in">
+                <div class="card-header text-center py-4" style="background: var(--gradient); color: white;">
+                    <h3 class="mb-0">
+                        <i class="fas fa-sign-in-alt me-2"></i>用户登录
+                    </h3>
+                    <p class="mb-0 mt-2 opacity-75">欢迎回来！请登录您的账户</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- 用户名输入 -->
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="请输入用户名") }}
+                            </div>
+                            {% if form.username.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.username.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 密码输入 -->
+                        <div class="mb-3">
+                            {{ form.password.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="请输入密码") }}
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="fas fa-eye" id="eyeIcon"></i>
+                                </button>
+                            </div>
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.password.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 记住我 -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.remember_me(class="form-check-input") }}
+                                {{ form.remember_me.label(class="form-check-label") }}
+                                <small class="text-muted d-block">在此设备上保持登录状态</small>
+                            </div>
+                        </div>
+                        
+                        <!-- 登录按钮 -->
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-gradient btn-lg") }}
+                        </div>
+                    </form>
+                    
+                    <!-- 分隔线 -->
+                    <div class="text-center my-4">
+                        <hr>
+                        <span class="text-muted bg-white px-3">或</span>
+                    </div>
+                    
+                    <!-- 注册链接 -->
+                    <div class="text-center">
+                        <p class="mb-0">
+                            还没有账户？
+                            <a href="{{ url_for('register') }}" class="text-decoration-none fw-bold">
+                                立即注册
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 演示账户信息 -->
+            <div class="card mt-4 animate-fade-in" style="animation-delay: 0.2s;">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-info-circle text-info me-2"></i>演示账户
+                    </h6>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <small class="text-muted d-block">管理员账户</small>
+                            <code class="small">admin / admin123</code>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">测试账户</small>
+                            <code class="small">test / test123</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 密码显示/隐藏切换
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordField = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+    
+    if (togglePassword && passwordField && eyeIcon) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            
+            if (type === 'text') {
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+    }
+    
+    // 自动聚焦到用户名输入框
+    const usernameField = document.getElementById('username');
+    if (usernameField) {
+        usernameField.focus();
+    }
+    
+    // 表单验证反馈
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = form.querySelector('input[type="submit"]');
+            if (submitBtn) {
+                submitBtn.value = '登录中...';
+                submitBtn.disabled = true;
+                
+                // 如果表单验证失败，恢复按钮状态
+                setTimeout(() => {
+                    if (document.querySelector('.is-invalid')) {
+                        submitBtn.value = '登录';
+                        submitBtn.disabled = false;
+                    }
+                }, 100);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

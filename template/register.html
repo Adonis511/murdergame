@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}用户注册 - 聊天应用{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card animate-fade-in">
+                <div class="card-header text-center py-4" style="background: var(--gradient); color: white;">
+                    <h3 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>用户注册
+                    </h3>
+                    <p class="mb-0 mt-2 opacity-75">创建您的聊天账户，开始精彩对话</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" id="registerForm">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- 用户名输入 -->
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="3-80个字符，支持字母数字下划线") }}
+                            </div>
+                            {% if form.username.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.username.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                用户名将作为您的登录凭证，注册后不可修改
+                            </div>
+                        </div>
+                        
+                        <!-- 邮箱输入 -->
+                        <div class="mb-3">
+                            {{ form.email.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                                {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="example@domain.com") }}
+                            </div>
+                            {% if form.email.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.email.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                邮箱用于账户安全和头像显示，请使用真实邮箱
+                            </div>
+                        </div>
+                        
+                        <!-- 昵称输入 -->
+                        <div class="mb-3">
+                            {{ form.nickname.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-id-card"></i>
+                                </span>
+                                {{ form.nickname(class="form-control" + (" is-invalid" if form.nickname.errors else ""), placeholder="选填，显示在聊天中的名称") }}
+                            </div>
+                            {% if form.nickname.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.nickname.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                昵称为可选项，如不填写将使用用户名作为昵称
+                            </div>
+                        </div>
+                        
+                        <!-- 密码输入 -->
+                        <div class="mb-3">
+                            {{ form.password.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="6-128个字符") }}
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="fas fa-eye" id="eyeIcon"></i>
+                                </button>
+                            </div>
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.password.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <!-- 密码强度指示器 -->
+                            <div class="mt-2">
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar" id="passwordStrength" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small class="form-text" id="passwordStrengthText">请输入密码</small>
+                            </div>
+                        </div>
+                        
+                        <!-- 确认密码输入 -->
+                        <div class="mb-4">
+                            {{ form.password2.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                {{ form.password2(class="form-control" + (" is-invalid" if form.password2.errors else ""), placeholder="再次输入密码确认") }}
+                                <span class="input-group-text" id="passwordMatchIcon">
+                                    <i class="fas fa-question text-muted"></i>
+                                </span>
+                            </div>
+                            {% if form.password2.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.password2.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 注册按钮 -->
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-gradient btn-lg", id="submitBtn") }}
+                        </div>
+                    </form>
+                    
+                    <!-- 分隔线 -->
+                    <div class="text-center my-4">
+                        <hr>
+                        <span class="text-muted bg-white px-3">或</span>
+                    </div>
+                    
+                    <!-- 登录链接 -->
+                    <div class="text-center">
+                        <p class="mb-0">
+                            已有账户？
+                            <a href="{{ url_for('login') }}" class="text-decoration-none fw-bold">
+                                立即登录
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 注册须知 -->
+            <div class="card mt-4 animate-fade-in" style="animation-delay: 0.2s;">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-shield-alt text-success me-2"></i>隐私与安全
+                    </h6>
+                    <ul class="list-unstyled mb-0 small text-muted">
+                        <li><i class="fas fa-check text-success me-2"></i>我们使用安全加密存储您的密码</li>
+                        <li><i class="fas fa-check text-success me-2"></i>您的聊天记录仅您本人可见</li>
+                        <li><i class="fas fa-check text-success me-2"></i>邮箱信息不会泄露给第三方</li>
+                        <li><i class="fas fa-check text-success me-2"></i>注册即表示同意我们的服务条款</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registerForm');
+    const passwordField = document.getElementById('password');
+    const password2Field = document.getElementById('password2');
+    const togglePassword = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const strengthBar = document.getElementById('passwordStrength');
+    const strengthText = document.getElementById('passwordStrengthText');
+    const matchIcon = document.getElementById('passwordMatchIcon');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // 密码显示/隐藏切换
+    if (togglePassword && passwordField && eyeIcon) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            
+            if (type === 'text') {
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+    }
+    
+    // 密码强度检测
+    if (passwordField && strengthBar && strengthText) {
+        passwordField.addEventListener('input', function() {
+            const password = this.value;
+            const strength = calculatePasswordStrength(password);
+            updatePasswordStrength(strength);
+            checkPasswordMatch();
+        });
+    }
+    
+    // 密码匹配检测
+    if (password2Field) {
+        password2Field.addEventListener('input', checkPasswordMatch);
+    }
+    
+    function calculatePasswordStrength(password) {
+        let score = 0;
+        if (!password) return score;
+        
+        // 长度检查
+        if (password.length >= 6) score += 1;
+        if (password.length >= 8) score += 1;
+        if (password.length >= 12) score += 1;
+        
+        // 字符类型检查
+        if (/[a-z]/.test(password)) score += 1;
+        if (/[A-Z]/.test(password)) score += 1;
+        if (/[0-9]/.test(password)) score += 1;
+        if (/[^A-Za-z0-9]/.test(password)) score += 1;
+        
+        return Math.min(score, 5);
+    }
+    
+    function updatePasswordStrength(strength) {
+        const percentage = (strength / 5) * 100;
+        strengthBar.style.width = percentage + '%';
+        
+        const strengthClasses = ['bg-danger', 'bg-warning', 'bg-info', 'bg-success'];
+        const strengthTexts = ['密码太弱', '密码较弱', '密码一般', '密码较强', '密码很强'];
+        
+        // 清除所有强度类
+        strengthBar.className = 'progress-bar';
+        
+        if (strength === 0) {
+            strengthText.textContent = '请输入密码';
+            strengthText.className = 'form-text text-muted';
+        } else if (strength <= 2) {
+            strengthBar.classList.add('bg-danger');
+            strengthText.textContent = strengthTexts[0];
+            strengthText.className = 'form-text text-danger';
+        } else if (strength === 3) {
+            strengthBar.classList.add('bg-warning');
+            strengthText.textContent = strengthTexts[1];
+            strengthText.className = 'form-text text-warning';
+        } else if (strength === 4) {
+            strengthBar.classList.add('bg-info');
+            strengthText.textContent = strengthTexts[2];
+            strengthText.className = 'form-text text-info';
+        } else {
+            strengthBar.classList.add('bg-success');
+            strengthText.textContent = strengthTexts[3];
+            strengthText.className = 'form-text text-success';
+        }
+    }
+    
+    function checkPasswordMatch() {
+        if (!passwordField || !password2Field || !matchIcon) return;
+        
+        const password = passwordField.value;
+        const password2 = password2Field.value;
+        
+        const iconElement = matchIcon.querySelector('i');
+        
+        if (!password2) {
+            iconElement.className = 'fas fa-question text-muted';
+        } else if (password === password2) {
+            iconElement.className = 'fas fa-check text-success';
+        } else {
+            iconElement.className = 'fas fa-times text-danger';
+        }
+    }
+    
+    // 表单提交处理
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            submitBtn.value = '注册中...';
+            submitBtn.disabled = true;
+            
+            // 如果表单验证失败，恢复按钮状态
+            setTimeout(() => {
+                if (document.querySelector('.is-invalid')) {
+                    submitBtn.value = '注册';
+                    submitBtn.disabled = false;
+                }
+            }, 100);
+        });
+    }
+    
+    // 自动聚焦到用户名输入框
+    const usernameField = document.getElementById('username');
+    if (usernameField) {
+        usernameField.focus();
+    }
+});
+</script>
+{% endblock %}

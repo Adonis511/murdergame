@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}个人资料 - 聊天应用{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- 用户信息卡片 -->
+        <div class="col-lg-4 mb-4">
+            <div class="card animate-fade-in">
+                <div class="card-body text-center">
+                    <!-- 头像 -->
+                    <div class="mb-3">
+                        {% if user.avatar %}
+                        <img src="{{ user.avatar }}" alt="头像" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                        {% else %}
+                        <div class="rounded-circle bg-gradient d-inline-flex align-items-center justify-content-center text-white" style="width: 100px; height: 100px; font-size: 2rem;">
+                            {{ user.nickname[0].upper() if user.nickname else 'U' }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- 基本信息 -->
+                    <h4 class="card-title">{{ user.nickname }}</h4>
+                    <p class="text-muted">@{{ user.username }}</p>
+                    
+                    {% if user.is_admin %}
+                    <span class="badge bg-danger mb-3">
+                        <i class="fas fa-crown me-1"></i>管理员
+                    </span>
+                    {% endif %}
+                    
+                    <!-- 统计信息 -->
+                    <div class="row text-center mt-4">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h5 class="mb-0">{{ user.login_count or 0 }}</h5>
+                                <small class="text-muted">登录次数</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h5 class="mb-0">{{ user.messages.count() }}</h5>
+                                <small class="text-muted">消息数量</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h5 class="mb-0">{{ time_ago(user.created_at) }}</h5>
+                            <small class="text-muted">加入时间</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 快速操作 -->
+            <div class="card mt-4 animate-fade-in" style="animation-delay: 0.1s;">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>快速操作</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <a href="{{ url_for('chat') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-comment-dots me-2 text-primary"></i>进入聊天室
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#exportModal">
+                            <i class="fas fa-download me-2 text-success"></i>导出聊天记录
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#clearModal">
+                            <i class="fas fa-trash me-2 text-danger"></i>清空聊天记录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 详细信息 -->
+        <div class="col-lg-8">
+            <!-- 账户信息 -->
+            <div class="card mb-4 animate-fade-in" style="animation-delay: 0.2s;">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>账户信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">用户名</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                <input type="text" class="form-control" value="{{ user.username }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">昵称</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                                <input type="text" class="form-control" value="{{ user.nickname }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">邮箱</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <input type="email" class="form-control" value="{{ user.email }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">注册时间</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                                <input type="text" class="form-control" value="{{ format_datetime(user.created_at) }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">上次登录</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                <input type="text" class="form-control" value="{{ format_datetime(user.last_login) if user.last_login else '未知' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">账户状态</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-{{ 'check-circle text-success' if user.is_active else 'times-circle text-danger' }}"></i>
+                                </span>
+                                <input type="text" class="form-control" value="{{ '正常' if user.is_active else '已禁用' }}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 聊天统计 -->
+            <div class="card mb-4 animate-fade-in" style="animation-delay: 0.3s;">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>聊天统计</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <div class="feature-icon mx-auto mb-2" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <h4>{{ user.messages.count() }}</h4>
+                                <small class="text-muted">总消息数</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <div class="feature-icon mx-auto mb-2" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                    <i class="fas fa-user-edit"></i>
+                                </div>
+                                <h4>{{ user.messages.filter_by(message_type='user').count() }}</h4>
+                                <small class="text-muted">发送消息</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <div class="feature-icon mx-auto mb-2" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                    <i class="fas fa-robot"></i>
+                                </div>
+                                <h4>{{ user.messages.filter_by(message_type='bot').count() }}</h4>
+                                <small class="text-muted">收到回复</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <div class="feature-icon mx-auto mb-2" style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                    <i class="fas fa-calendar-day"></i>
+                                </div>
+                                <h4>{{ ((datetime.utcnow() - user.created_at).days + 1) if user.created_at else 0 }}</h4>
+                                <small class="text-muted">使用天数</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 最近消息 -->
+            <div class="card animate-fade-in" style="animation-delay: 0.4s;">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>最近消息</h5>
+                </div>
+                <div class="card-body">
+                    {% set recent_messages = user.messages.order_by(user.messages.desc()).limit(5).all() %}
+                    {% if recent_messages %}
+                    <div class="list-group list-group-flush">
+                        {% for message in recent_messages %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <span class="badge bg-{{ 'primary' if message.message_type == 'user' else 'secondary' }} me-2">
+                                            {{ '用户' if message.message_type == 'user' else '助手' }}
+                                        </span>
+                                        <small class="text-muted">{{ time_ago(message.timestamp) }}</small>
+                                    </div>
+                                    <p class="mb-0 text-truncate">{{ message.content[:100] }}{% if message.content|length > 100 %}...{% endif %}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('chat') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-comment-dots me-2"></i>查看完整聊天记录
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">还没有聊天记录</p>
+                        <a href="{{ url_for('chat') }}" class="btn btn-gradient">
+                            <i class="fas fa-comment-dots me-2"></i>开始聊天
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导出聊天记录模态框 -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-download me-2"></i>导出聊天记录</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>选择导出格式：</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="exportChat('json')">
+                        <i class="fas fa-file-code me-2"></i>JSON格式
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportChat('markdown')">
+                        <i class="fab fa-markdown me-2"></i>Markdown格式
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 清空聊天记录模态框 -->
+<div class="modal fade" id="clearModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger"><i class="fas fa-exclamation-triangle me-2"></i>危险操作</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>警告：</strong>此操作将永久删除您的所有聊天记录，无法恢复。</p>
+                <p>请输入 "确认删除" 来确认此操作：</p>
+                <input type="text" id="confirmInput" class="form-control" placeholder="请输入：确认删除">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmClear" disabled>确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmInput = document.getElementById('confirmInput');
+    const confirmBtn = document.getElementById('confirmClear');
+    
+    // 确认输入检测
+    if (confirmInput && confirmBtn) {
+        confirmInput.addEventListener('input', function() {
+            confirmBtn.disabled = this.value !== '确认删除';
+        });
+        
+        confirmBtn.addEventListener('click', function() {
+            if (confirmInput.value === '确认删除') {
+                clearChatHistory();
+            }
+        });
+    }
+});
+
+function exportChat(format) {
+    fetch('/api/chat/history')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const messages = data.data.messages;
+                let content = '';
+                let filename = '';
+                
+                if (format === 'json') {
+                    content = JSON.stringify(messages, null, 2);
+                    filename = `chat_history_${new Date().toISOString().split('T')[0]}.json`;
+                } else if (format === 'markdown') {
+                    content = '# 聊天记录\n\n';
+                    content += `导出时间：${new Date().toLocaleString()}\n\n---\n\n`;
+                    
+                    messages.forEach(msg => {
+                        const time = new Date(msg.timestamp).toLocaleString();
+                        const sender = msg.message_type === 'user' ? '用户' : '助手';
+                        content += `## ${sender} (${time})\n\n${msg.content}\n\n`;
+                    });
+                    
+                    filename = `chat_history_${new Date().toISOString().split('T')[0]}.md`;
+                }
+                
+                downloadFile(content, filename);
+                bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+            } else {
+                alert('导出失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('导出错误:', error);
+            alert('导出失败，请重试');
+        });
+}
+
+function clearChatHistory() {
+    // 这里应该调用清空聊天记录的API
+    alert('清空功能尚未实现，请在聊天界面中使用清空功能');
+    bootstrap.Modal.getInstance(document.getElementById('clearModal')).hide();
+}
+
+function downloadFile(content, filename) {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+}
+</script>
+{% endblock %}

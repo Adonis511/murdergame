@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 聊天应用{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- 欢迎部分 -->
+    <div class="row justify-content-center mb-5">
+        <div class="col-lg-8 text-center animate-fade-in">
+            <h1 class="display-4 fw-bold mb-4">
+                <i class="fas fa-comments text-primary me-3"></i>
+                欢迎使用聊天应用
+            </h1>
+            <p class="lead text-muted mb-4">
+                一个支持完整Markdown语法的现代化聊天界面，让交流更加丰富多彩
+            </p>
+            
+            {% if current_user.is_authenticated %}
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{{ url_for('chat') }}" class="btn btn-gradient btn-lg">
+                    <i class="fas fa-comment-dots me-2"></i>进入聊天室
+                </a>
+                <a href="{{ url_for('profile') }}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-user me-2"></i>个人资料
+                </a>
+            </div>
+            {% else %}
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{{ url_for('login') }}" class="btn btn-gradient btn-lg">
+                    <i class="fas fa-sign-in-alt me-2"></i>立即登录
+                </a>
+                <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-user-plus me-2"></i>免费注册
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 功能特色 -->
+    <div class="row mb-5">
+        <div class="col-12 text-center mb-4">
+            <h2 class="fw-bold">✨ 功能特色</h2>
+            <p class="text-muted">为什么选择我们的聊天应用？</p>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 text-center animate-fade-in">
+                <div class="card-body">
+                    <div class="feature-icon">
+                        <i class="fab fa-markdown"></i>
+                    </div>
+                    <h5 class="card-title">Markdown支持</h5>
+                    <p class="card-text">完整支持Markdown语法，包括代码高亮、表格、列表等格式化功能。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 text-center animate-fade-in" style="animation-delay: 0.1s;">
+                <div class="card-body">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h5 class="card-title">响应式设计</h5>
+                    <p class="card-text">完美适配各种设备屏幕，无论是手机、平板还是电脑都有优秀体验。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 text-center animate-fade-in" style="animation-delay: 0.2s;">
+                <div class="card-body">
+                    <div class="feature-icon">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <h5 class="card-title">数据导出</h5>
+                    <p class="card-text">支持聊天记录的JSON和Markdown格式导出，数据永不丢失。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 text-center animate-fade-in" style="animation-delay: 0.3s;">
+                <div class="card-body">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h5 class="card-title">代码高亮</h5>
+                    <p class="card-text">自动识别代码语言并提供语法高亮，支持多种编程语言。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 text-center animate-fade-in" style="animation-delay: 0.4s;">
+                <div class="card-body">
+                    <div class="feature-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h5 class="card-title">可配置工具</h5>
+                    <p class="card-text">灵活的工具栏配置，可根据需要自定义功能按钮。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 text-center animate-fade-in" style="animation-delay: 0.5s;">
+                <div class="card-body">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h5 class="card-title">安全可靠</h5>
+                    <p class="card-text">用户认证、会话管理、数据加密，全方位保护您的隐私安全。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <!-- 用户统计 -->
+    <div class="row mb-5">
+        <div class="col-12 text-center mb-4">
+            <h2 class="fw-bold">📊 您的统计信息</h2>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="stats-card animate-fade-in">
+                <i class="fas fa-user fa-2x mb-2"></i>
+                <h4>{{ current_user.nickname }}</h4>
+                <p class="mb-0">当前用户</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="stats-card animate-fade-in" style="animation-delay: 0.1s;">
+                <i class="fas fa-calendar fa-2x mb-2"></i>
+                <h4>{{ format_date(current_user.created_at) }}</h4>
+                <p class="mb-0">注册时间</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="stats-card animate-fade-in" style="animation-delay: 0.2s;">
+                <i class="fas fa-sign-in-alt fa-2x mb-2"></i>
+                <h4>{{ current_user.login_count or 0 }}</h4>
+                <p class="mb-0">登录次数</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="stats-card animate-fade-in" style="animation-delay: 0.3s;">
+                <i class="fas fa-clock fa-2x mb-2"></i>
+                <h4>{{ time_ago(current_user.last_login) if current_user.last_login else '首次登录' }}</h4>
+                <p class="mb-0">上次登录</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Markdown语法示例 -->
+    <div class="row mb-5">
+        <div class="col-12 text-center mb-4">
+            <h2 class="fw-bold">📝 Markdown语法示例</h2>
+            <p class="text-muted">在聊天中使用这些语法让消息更丰富</p>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100 animate-fade-in">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-code me-2"></i>Markdown语法</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="mb-0"><code># 一级标题
+## 二级标题
+
+**粗体文本**
+*斜体文本*
+
+`行内代码`
+
+```javascript
+function hello() {
+    console.log("Hello World!");
+}
+```
+
+- 列表项1
+- 列表项2
+
+> 这是引用文本
+
+[链接文本](https://example.com)</code></pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100 animate-fade-in" style="animation-delay: 0.1s;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-eye me-2"></i>渲染效果</h5>
+                </div>
+                <div class="card-body">
+                    <h1>一级标题</h1>
+                    <h2>二级标题</h2>
+                    <p><strong>粗体文本</strong><br>
+                    <em>斜体文本</em></p>
+                    <p><code>行内代码</code></p>
+                    <div class="bg-dark text-light p-2 rounded mb-2">
+                        <code>function hello() {<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;console.log("Hello World!");<br>
+                        }</code>
+                    </div>
+                    <ul>
+                        <li>列表项1</li>
+                        <li>列表项2</li>
+                    </ul>
+                    <blockquote class="blockquote">
+                        <p>这是引用文本</p>
+                    </blockquote>
+                    <a href="https://example.com" class="text-decoration-none">链接文本</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速开始 -->
+    {% if not current_user.is_authenticated %}
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card animate-fade-in">
+                <div class="card-body text-center py-5">
+                    <h3 class="fw-bold mb-4">🚀 开始使用</h3>
+                    <p class="text-muted mb-4">只需几秒钟即可开始您的聊天之旅</p>
+                    
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="feature-icon mx-auto mb-3" style="width: 50px; height: 50px; font-size: 1.2rem;">1</div>
+                            <h5>免费注册</h5>
+                            <p class="text-muted small">创建您的账户</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="feature-icon mx-auto mb-3" style="width: 50px; height: 50px; font-size: 1.2rem;">2</div>
+                            <h5>登录系统</h5>
+                            <p class="text-muted small">使用账户登录</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="feature-icon mx-auto mb-3" style="width: 50px; height: 50px; font-size: 1.2rem;">3</div>
+                            <h5>开始聊天</h5>
+                            <p class="text-muted small">享受聊天体验</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{{ url_for('register') }}" class="btn btn-gradient btn-lg me-3">
+                            <i class="fas fa-user-plus me-2"></i>立即注册
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>已有账户？登录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.8s ease-out;
+    }
+    
+    .animate-fade-in[style*="animation-delay"] {
+        opacity: 0;
+        animation-fill-mode: forwards;
+    }
+</style>
+{% endblock %}

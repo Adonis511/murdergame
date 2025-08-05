@@ -30,5 +30,5 @@ class Config:
     WTF_CSRF_TIME_LIMIT = 3600  # 1小时
 
     # LLM配置
-    API_BASE="https://dashscope.aliyuncs.com/compatible-mode/v1"
-    API_KEY="sk-fb535aeda39f42d0b8f7039b98699374"
+    API_BASE = os.environ.get('API_BASE') or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    API_KEY = os.environ.get('API_KEY') or "sk-fb535aeda39f42d0b8f7039b98699374"

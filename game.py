@@ -449,6 +449,124 @@ class Game:
         """获取游戏目录路径"""
         return self.game_dir
     
+    def get_current_chapter(self) -> int:
+        """获取当前章节号"""
+        return self.chapter
+    
+    def get_total_chapters(self) -> int:
+        """获取总章节数"""
+        return len(self.script.get('dm', []))
+    
+    def start_chapter(self, chapter_num: int, chat_history: str = "") -> dict:
+        """开始新章节，返回DM开场发言"""
+        dm_script = self.script.get('dm', [])
+        
+        print(f"📖 开始第{chapter_num}章 (共{len(dm_script)}章)")
+        self.chapter = chapter_num
+        
+        dm_result = self.dm_agent.speak(
+            chapter=chapter_num - 1,  # speak方法从0开始计数
+            script=dm_script,
+            chat_history=chat_history,
+            title=self.script.get('title', '剧本杀游戏'),
+            characters=self.script.get('characters', []),
+            clues=self.script.get('clues', []),
+            base_path=self.game_dir
+        )
+        
+        return dm_result
+    
+    def end_chapter(self, chapter_num: int, chat_history: str) -> dict:
+        """结束当前章节，返回DM总结发言"""
+        dm_script = self.script.get('dm', [])
+        
+        print(f"📖 结束第{chapter_num}章")
+        
+        dm_result = self.dm_agent.speak(
+            chapter=chapter_num - 1,
+            script=dm_script,
+            chat_history=chat_history,
+            is_chapter_end=True,
+            title=self.script.get('title', '剧本杀游戏'),
+            characters=self.script.get('characters', []),
+            clues=self.script.get('clues', []),
+            base_path=self.game_dir
+        )
+        
+        return dm_result
+    
+    def end_game(self, chat_history: str, killer: str = "", truth_info: str = "") -> dict:
+        """结束游戏，返回DM最终总结发言"""
+        dm_script = self.script.get('dm', [])
+        
+        print(f"🎉 游戏结束！")
+        
+        dm_result = self.dm_agent.speak(
+            chapter=len(dm_script) - 1,
+            script=dm_script,
+            chat_history=chat_history,
+            is_game_end=True,
+            killer=killer,
+            truth_info=truth_info,
+            title=self.script.get('title', '剧本杀游戏'),
+            characters=self.script.get('characters', []),
+            clues=self.script.get('clues', []),
+            base_path=self.game_dir
+        )
+        
+        return dm_result
+    
+    def dm_interject(self, chat_history: str, trigger_reason: str = "", guidance: str = "") -> dict:
+        """DM穿插发言"""
+        dm_script = self.script.get('dm', [])
+        
+        print(f"🎭 DM穿插发言...")
+        
+        dm_result = self.dm_agent.speak(
+            chapter=self.chapter - 1 if self.chapter > 0 else 0,
+            script=dm_script,
+            chat_history=chat_history,
+            is_interject=True,
+            trigger_reason=trigger_reason,
+            guidance=guidance,
+            title=self.script.get('title', '剧本杀游戏'),
+            characters=self.script.get('characters', []),
+            clues=self.script.get('clues', []),
+            base_path=self.game_dir
+        )
+        
+        return dm_result
+    
+    def should_dm_interject(self, chat_history: str, message_count_since_last_dm: int = 0) -> bool:
+        """判断是否需要DM穿插发言
+        
+        Args:
+            chat_history: 聊天历史
+            message_count_since_last_dm: 自上次DM发言后的消息数量
+            
+        Returns:
+            bool: 是否需要DM发言
+        """
+        # 简单的触发条件逻辑，可以根据需要扩展
+        
+        # 如果玩家聊天太久没有DM发言
+        if message_count_since_last_dm > 10:
+            return True
+        
+        # 如果聊天中出现关键词
+        keywords = ["凶手", "线索", "真相", "怀疑", "证据", "推理"]
+        recent_messages = chat_history[-500:] if len(chat_history) > 500 else chat_history
+        
+        keyword_count = sum(1 for keyword in keywords if keyword in recent_messages)
+        if keyword_count >= 3:  # 如果最近消息中出现多个关键词
+            return True
+        
+        # 如果聊天变得重复或偏离主题
+        if "无话可说" in recent_messages or "不知道" in recent_messages:
+            return True
+            
+        return False
+    
 if __name__ == "__main__":
     game=Game()
     # game = Game(script_path="log/250805110930")

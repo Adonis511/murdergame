@@ -7,6 +7,7 @@ import requests
 import os
 from datetime import datetime
 from typing import List
+from openai_utils import create_openai_client
 class DMAgent:
     def __init__(self):
         # self.name = name
@@ -27,10 +28,7 @@ class DMAgent:
 - 必须返回纯JSON格式，不要用markdown代码块包装
 - 确保JSON格式正确，可以直接解析
 - 所有中文内容要完整清晰"""
-        self.client = OpenAI(
-            base_url=Config.API_BASE,
-            api_key=Config.API_KEY,
-        )
+        self.client = create_openai_client()
     def gen_script(self):
         print("start generating script")
         start = time.time()
@@ -185,9 +183,9 @@ class DMAgent:
     
     def speak(self, chapter: int, script: List[str], chat_history: str = "", 
               is_chapter_end: bool = False, is_game_end: bool = False, 
-              is_interject: bool = False, **kwargs) -> str:
+              is_interject: bool = False, **kwargs) -> dict:
         """
-        生成DM发言
+        生成DM发言，支持工具调用
         
         Args:
             chapter: 章节（从0开始）
@@ -199,7 +197,7 @@ class DMAgent:
             **kwargs: 其他参数，如killer、truth_info、trigger_reason、guidance等
             
         Returns:
-            str: DM发言内容
+            dict: 包含发言内容和可能的工具调用信息
         """
         print(f"🎭 DM正在准备发言...")
         
@@ -218,7 +216,8 @@ class DMAgent:
             script_data = {
                 'title': kwargs.get('title', '剧本杀游戏'),
                 'characters': kwargs.get('characters', []),
-                'dm': script
+                'dm': script,
+                'clues': kwargs.get('clues', [])
             }
             
             # 构建系统提示词
@@ -242,11 +241,102 @@ class DMAgent:
             
             response = completion.choices[0].message.content.strip()
             print(f"✅ DM {speak_type} 发言生成完成")
-            return response
+            
+            # 解析响应，检查是否包含工具调用
+            return self._parse_dm_response(response, script_data, kwargs.get('base_path', ''))
             
         except Exception as e:
             print(f"❌ DM发言生成失败: {e}")
-            return self._get_speak_fallback(speak_type, chapter + 1)
+            return {
+                'speech': self._get_speak_fallback(speak_type, chapter + 1),
+                'tools': [],
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _parse_dm_response(self, response: str, script_data: dict, base_path: str = "") -> dict:
+        """
+        解析DM响应，提取发言内容和工具调用
+        
+        Args:
+            response: AI生成的响应
+            script_data: 剧本数据
+            base_path: 基础路径
+            
+        Returns:
+            dict: 包含发言和工具调用信息
+        """
+        try:
+            # 尝试解析JSON格式的响应
+            if response.strip().startswith('{') and response.strip().endswith('}'):
+                parsed = json.loads(response)
+                speech = parsed.get('speech', '')
+                tool_calls = parsed.get('tools', [])
+            else:
+                # 如果不是JSON格式，检查是否包含工具调用标记
+                speech = response
+                tool_calls = []
+                
+                # 检查是否包含线索展示请求
+                if '[SHOW_CLUE:' in response:
+                    import re
+                    clue_matches = re.findall(r'\[SHOW_CLUE:(\d+)-(\d+)\]', response)
+                    for chapter, clue_index in clue_matches:
+                        tool_calls.append({
+                            'type': 'show_clue',
+                            'chapter': int(chapter),
+                            'clue_index': int(clue_index)
+                        })
+                        # 从发言中移除工具调用标记
+                        speech = speech.replace(f'[SHOW_CLUE:{chapter}-{clue_index}]', '')
+                
+                # 检查是否包含角色展示请求
+                if '[SHOW_CHARACTER:' in response:
+                    import re
+                    char_matches = re.findall(r'\[SHOW_CHARACTER:([^\]]+)\]', response)
+                    for character_name in char_matches:
+                        tool_calls.append({
+                            'type': 'show_character',
+                            'character_name': character_name
+                        })
+                        # 从发言中移除工具调用标记
+                        speech = speech.replace(f'[SHOW_CHARACTER:{character_name}]', '')
+            
+            # 执行工具调用
+            executed_tools = []
+            for tool_call in tool_calls:
+                if tool_call['type'] == 'show_clue':
+                    result = self.show_clue(
+                        tool_call['chapter'], 
+                        tool_call['clue_index'], 
+                        script_data, 
+                        base_path
+                    )
+                    executed_tools.append(result)
+                elif tool_call['type'] == 'show_character':
+                    result = self.show_character(
+                        tool_call['character_name'], 
+                        script_data, 
+                        base_path
+                    )
+                    executed_tools.append(result)
+            
+            return {
+                'speech': speech.strip(),
+                'tools': executed_tools,
+                'success': True,
+                'raw_response': response
+            }
+            
+        except Exception as e:
+            print(f"❌ 响应解析失败: {e}")
+            return {
+                'speech': response,
+                'tools': [],
+                'success': False,
+                'error': str(e),
+                'raw_response': response
+            }
     
     def _build_speak_system_prompt(self, speak_type: str) -> str:
         """构建speak方法的系统提示词"""
@@ -256,7 +346,31 @@ class DMAgent:
 2. 推进剧情发展  
 3. 引导玩家思考和互动
 4. 保持角色扮演的沉浸感
-5. 语言生动有趣，富有感染力"""
+5. 语言生动有趣，富有感染力
+
+## 可用工具
+你可以在发言中使用以下工具来增强游戏体验：
+
+1. **展示线索** - 当需要向玩家展示具体线索时使用
+   格式: [SHOW_CLUE:章节号-线索编号] (例如: [SHOW_CLUE:1-1] 表示第1章第1个线索)
+   
+2. **展示角色** - 当需要介绍角色或展示角色信息时使用  
+   格式: [SHOW_CHARACTER:角色名称] (例如: [SHOW_CHARACTER:张三])
+
+## 工具使用原则
+- 只在确实需要时使用工具，不要滥用
+- 线索展示工具适用于：引入新线索、强调重要证据、回顾关键线索
+- 角色展示工具适用于：角色介绍、嫌疑人分析、角色回顾
+- 工具调用应该与你的发言内容自然结合
+- 一次发言中可以使用多个工具，但要适度
+
+## 输出格式
+直接输出你的发言内容，在需要使用工具的地方插入工具调用标记。
+例如：
+"现在让我们来看看在案发现场发现的第一个重要线索。[SHOW_CLUE:1-1] 这把匕首上的血迹..."
+或者：
+"让我为大家介绍一下我们的主要嫌疑人。[SHOW_CHARACTER:李华] 李华先生，您能解释一下..."
+"""
 
         if speak_type == "chapter_start":
             return base_prompt + """
@@ -314,11 +428,27 @@ class DMAgent:
         if current_chapter <= len(dm_script):
             current_dm_content = dm_script[current_chapter - 1] if dm_script else "本章节内容"
         
+        # 构建可用线索信息
+        clues = script_data.get('clues', [])
+        available_clues = ""
+        for i, chapter_clues in enumerate(clues[:current_chapter], 1):
+            if chapter_clues:
+                clue_list = []
+                for j, clue in enumerate(chapter_clues, 1):
+                    clue_list.append(f"  {i}-{j}: {clue}")
+                available_clues += f"第{i}章线索:\n" + "\n".join(clue_list) + "\n"
+        
         base_info = f"""## 剧本信息
 **剧本标题**: {title}
 **角色列表**: {', '.join(characters) if characters else '游戏角色'}
 **当前章节**: 第{current_chapter}章 (共{total_chapters}章)
 **当前章节内容**: {current_dm_content}
+
+## 可展示的线索 (使用 [SHOW_CLUE:章节-编号])
+{available_clues if available_clues else "暂无可展示线索"}
+
+## 可展示的角色 (使用 [SHOW_CHARACTER:角色名])
+{', '.join(characters) if characters else '暂无角色信息'}
 """
 
         if speak_type == "chapter_start":
@@ -335,7 +465,10 @@ class DMAgent:
 1. {"欢迎玩家并介绍游戏背景" if current_chapter == 1 else f"简要回顾第{current_chapter-1}章的关键情况"}
 2. 介绍第{current_chapter}章的场景和任务
 3. 引导玩家开始本章节的互动
-4. 字数控制在200-400字之间
+4. 适当时可以展示角色介绍或新线索
+5. 字数控制在200-400字之间
+
+**工具使用建议**: {"如果是游戏开始，可以展示主要角色；如果有新线索登场，可以展示相关线索" if current_chapter == 1 else "可以展示本章的新线索或重要角色"}
 """
 
         elif speak_type == "chapter_end":
@@ -352,7 +485,10 @@ class DMAgent:
 1. 总结本章节玩家的主要发现和互动
 2. 点评重要的推理和线索发现
 3. {f"为第{current_chapter+1}章做铺垫" if current_chapter < total_chapters else "为最终真相揭示做准备"}
-4. 字数控制在300-500字之间
+4. 适当时可以回顾关键线索或角色
+5. 字数控制在300-500字之间
+
+**工具使用建议**: 可以展示本章发现的关键线索，或者突出重要嫌疑人角色
 """
 
         elif speak_type == "game_end":
@@ -379,7 +515,10 @@ class DMAgent:
 3. 点评每个玩家的精彩表现
 4. 总结整个游戏的亮点时刻
 5. 表达对玩家参与的感谢
-6. 字数控制在500-800字之间
+6. 适当时展示关键证据或凶手角色
+7. 字数控制在500-800字之间
+
+**工具使用建议**: 强烈建议展示凶手角色，以及最关键的证据线索，增强真相揭示的视觉效果
 """
 
         elif speak_type == "interject":
@@ -405,7 +544,10 @@ class DMAgent:
 1. 针对当前情况进行适当引导
 2. {"提供必要的提示或澄清" if guidance else "推进游戏进程"}
 3. 保持游戏的流畅性
-4. 字数控制在100-200字之间
+4. 必要时可以展示相关线索或角色信息
+5. 字数控制在100-200字之间
+
+**工具使用建议**: 如果需要提示特定线索或强调某个角色，可以适当使用工具
 """
 
         return prompt
@@ -419,6 +561,97 @@ class DMAgent:
             "interject": "请各位继续，我在这里静静观察着你们的推理过程..."
         }
         return fallback_speeches.get(speak_type, "DM发言暂时无法生成，请继续游戏。")
+    
+    def show_clue(self, chapter: int, clue_index: int, script_data: dict, base_path: str = "") -> dict:
+        """
+        展示指定章节的线索
+        
+        Args:
+            chapter: 章节号（从1开始）
+            clue_index: 线索索引（从1开始）
+            script_data: 剧本数据
+            base_path: 基础路径，用于构建图片URL
+            
+        Returns:
+            dict: 包含线索信息的字典
+        """
+        try:
+            # 获取线索描述
+            clues = script_data.get('clues', [])
+            if chapter <= len(clues) and clue_index <= len(clues[chapter - 1]):
+                clue_description = clues[chapter - 1][clue_index - 1]
+            else:
+                clue_description = "线索描述未找到"
+            
+            # 构建图片路径
+            image_filename = f"clue-ch{chapter}-{clue_index}.png"
+            if base_path:
+                image_url = f"{base_path}/imgs/{image_filename}"
+            else:
+                image_url = f"imgs/{image_filename}"
+            
+            return {
+                'success': True,
+                'chapter': chapter,
+                'clue_index': clue_index,
+                'description': clue_description,
+                'image_url': image_url,
+                'image_filename': image_filename,
+                'tool_type': 'show_clue'
+            }
+            
+        except Exception as e:
+            print(f"❌ 展示线索失败: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'tool_type': 'show_clue'
+            }
+
+    def show_character(self, character_name: str, script_data: dict, base_path: str = "") -> dict:
+        """
+        展示指定角色信息
+        
+        Args:
+            character_name: 角色名称
+            script_data: 剧本数据
+            base_path: 基础路径，用于构建图片URL
+            
+        Returns:
+            dict: 包含角色信息的字典
+        """
+        try:
+            # 检查角色是否存在
+            characters = script_data.get('characters', [])
+            if character_name not in characters:
+                return {
+                    'success': False,
+                    'error': f"角色 {character_name} 不存在",
+                    'tool_type': 'show_character'
+                }
+            
+            # 构建图片路径
+            image_filename = f"{character_name}.png"
+            if base_path:
+                image_url = f"{base_path}/imgs/{image_filename}"
+            else:
+                image_url = f"imgs/{image_filename}"
+            
+            return {
+                'success': True,
+                'character_name': character_name,
+                'image_url': image_url,
+                'image_filename': image_filename,
+                'tool_type': 'show_character'
+            }
+            
+        except Exception as e:
+            print(f"❌ 展示角色失败: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'tool_type': 'show_character'
+            }
 
     def _submit_image_task(self, prompt: str, size: str) -> str:
         """提交图片生成任务"""

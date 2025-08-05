@@ -6,7 +6,12 @@
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 导入测试工具
+from test_utils import setup_project_path, get_latest_game, validate_game_path
+
+# 设置项目路径
+setup_project_path()
 
 from game import Game
 

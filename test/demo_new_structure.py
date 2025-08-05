@@ -4,8 +4,11 @@
 演示新的文件存储结构
 """
 
+import sys
 import os
 import time
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from game import Game
 
 def demo_directory_structure():

@@ -6,7 +6,12 @@ DM发言系统演示
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# 导入测试工具
+from test_utils import setup_project_path, get_latest_game, validate_game_path, list_available_games
+
+# 设置项目路径
+setup_project_path()
 
 from game import Game
 
@@ -17,7 +22,26 @@ def simulate_game_session():
     
     # 创建游戏（不生成图片，节省时间）
     print("📝 正在创建新游戏...")
-    game = Game(script_path=None, generate_images=False)
+    
+    # 自动获取最新的游戏会话
+    latest_game_path = get_latest_game()
+    
+    if latest_game_path:
+        # 验证游戏路径
+        validation = validate_game_path(latest_game_path)
+        if validation['is_valid']:
+            print(f"📂 使用现有游戏会话: {os.path.basename(latest_game_path)}")
+            game = Game(script_path=latest_game_path, generate_images=False)
+        else:
+            print(f"⚠️ 现有游戏会话无效，创建新游戏")
+            print(f"   错误: {validation['error']}")
+            game = Game(script_path=None, generate_images=False)
+    else:
+        print("📋 没有找到现有游戏会话，创建新游戏")
+        available_games = list_available_games()
+        if available_games:
+            print(f"💡 提示: 找到 {len(available_games)} 个游戏会话，但缺少script.json文件")
+        game = Game(script_path=None, generate_images=False)
     
     print(f"\n✅ 游戏创建成功!")
     print(f"🎯 剧本: {game.script.get('title', '未命名剧本')}")

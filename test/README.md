@@ -41,6 +41,25 @@
 - **运行**: `python test/test_game.py`
 - **依赖**: DMAgent和PlayerAgent
 
+#### `test_game_fixed.py`
+- **用途**: 测试修复后的Game类
+- **功能**: 
+  - 创建新游戏功能
+  - 加载现有游戏目录功能  
+  - 无效路径处理
+- **运行**: `python test/test_game_fixed.py`
+
+#### `test_dm_speech.py`
+- **用途**: 测试DM发言系统
+- **功能**:
+  - 章节开始发言 (`chapter_start`)
+  - 章节结束发言 (`chapter_end`) 
+  - 游戏结束发言 (`game_end`)
+  - 穿插发言 (`interject`)
+  - 发言触发条件判断
+- **运行**: `python test/test_dm_speech.py`
+- **依赖**: AI API连接，会实际调用AI生成发言内容
+
 ### 🎯 演示脚本
 
 #### `demo_json_query.py`
@@ -77,6 +96,12 @@ python test/test_dm_image.py
 
 # 测试游戏类功能
 python test/test_game.py
+
+# 测试修复后的游戏类
+python test/test_game_fixed.py
+
+# 测试DM发言系统
+python test/test_dm_speech.py
 ```
 
 ### 测试特定功能
@@ -108,6 +133,13 @@ python test_game.py
   - 自动角色和线索图片生成
   - 图片信息管理和保存
   - PlayerAgent集成
+  - 带时间戳的游戏目录管理
+- ✅ **DM发言系统** - 智能主持人发言
+  - 章节开始引导发言
+  - 章节结束总结发言
+  - 游戏结束最终总结
+  - 游戏过程中穿插发言
+  - 自动触发条件判断
 - ✅ **JSON格式输出** - 结构化数据返回
 - ✅ **多场景测试** - 不同角色的行为验证
 - ✅ **错误处理** - 异常情况的处理
@@ -190,6 +222,56 @@ print(f"玩家代理: {[agent.name for agent in game1.player_agents]}")
 #     └── clue-ch1-1.png
 ```
 
+### DM发言系统基本用法
+```python
+from game import Game
+
+# 创建游戏
+game = Game()
+
+# 章节开始发言
+chat_history = "之前的聊天记录..."
+dm_speech = game.start_chapter(1, chat_history)
+print(f"DM: {dm_speech}")
+
+# 章节结束发言
+dm_speech = game.end_chapter(1, chat_history)
+print(f"DM: {dm_speech}")
+
+# 游戏结束发言
+dm_speech = game.end_game(
+    chat_history=full_history,
+    killer="管家约翰", 
+    truth_info="详细的真相说明..."
+)
+print(f"DM: {dm_speech}")
+
+# 穿插发言
+dm_speech = game.dm_interject(
+    chat_history=current_chat,
+    trigger_reason="玩家需要引导",
+    guidance="提示玩家注意之前忽略的线索"
+)
+print(f"DM: {dm_speech}")
+
+# 检查是否需要DM发言
+should_speak = game.should_dm_interject(
+    chat_history=chat_history,
+    message_count_since_last_dm=8
+)
+
+if should_speak:
+    dm_speech = game.dm_interject(chat_history)
+    print(f"DM: {dm_speech}")
+```
+
+### DM发言类型说明
+- **chapter_start**: 章节开始时的引导发言
+- **chapter_end**: 章节结束时的总结发言
+- **game_end**: 游戏结束时的最终总结和真相揭示
+- **interject**: 游戏过程中的穿插发言和引导
+```
+
 ### JSON格式说明
 ```json
 {
@@ -225,6 +307,7 @@ print(f"玩家代理: {[agent.name for agent in game1.player_agents]}")
 - **2025-01-08**: 完成DMAgent.gen_image()图片生成功能（阿里云百炼）
 - **2025-01-08**: 增强Game类，支持剧本加载和完整图片生成流程
 - **2025-01-08**: 重构文件存储结构，使用带时间戳的游戏目录
+- **2025-01-08**: 实现DM发言系统，支持章节引导、总结和穿插发言功能
 
 ## 🐛 故障排除
 

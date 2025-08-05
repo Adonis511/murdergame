@@ -450,7 +450,8 @@ class Game:
         return self.game_dir
     
 if __name__ == "__main__":
-    game = Game(script_path="log/250805110930")
+    game=Game()
+    # game = Game(script_path="log/250805110930")
     print(game.player_agents)
     print(game.chapter)
     

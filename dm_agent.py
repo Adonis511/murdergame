@@ -6,6 +6,7 @@ import time
 import requests
 import os
 from datetime import datetime
+from typing import List
 class DMAgent:
     def __init__(self):
         # self.name = name
@@ -182,6 +183,243 @@ class DMAgent:
             print(f"❌ 图片生成异常: {str(e)}")
             return None
     
+    def speak(self, chapter: int, script: List[str], chat_history: str = "", 
+              is_chapter_end: bool = False, is_game_end: bool = False, 
+              is_interject: bool = False, **kwargs) -> str:
+        """
+        生成DM发言
+        
+        Args:
+            chapter: 章节（从0开始）
+            script: 剧本内容
+            chat_history: 聊天历史记录
+            is_chapter_end: 是否是章节结束
+            is_game_end: 是否是游戏结束
+            is_interject: 是否是穿插发言
+            **kwargs: 其他参数，如killer、truth_info、trigger_reason、guidance等
+            
+        Returns:
+            str: DM发言内容
+        """
+        print(f"🎭 DM正在准备发言...")
+        
+        try:
+            # 确定发言类型
+            if is_game_end:
+                speak_type = "game_end"
+            elif is_chapter_end:
+                speak_type = "chapter_end"
+            elif is_interject:
+                speak_type = "interject"
+            else:
+                speak_type = "chapter_start"
+            
+            # 构建剧本数据字典
+            script_data = {
+                'title': kwargs.get('title', '剧本杀游戏'),
+                'characters': kwargs.get('characters', []),
+                'dm': script
+            }
+            
+            # 构建系统提示词
+            system_prompt = self._build_speak_system_prompt(speak_type)
+            
+            # 构建用户提示词
+            user_prompt = self._build_speak_user_prompt(
+                speak_type, chapter + 1, len(script), script_data, 
+                chat_history, **kwargs
+            )
+            
+            # 生成DM发言
+            completion = self.client.chat.completions.create(
+                model="qwen-plus",
+                temperature=0.8,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            
+            response = completion.choices[0].message.content.strip()
+            print(f"✅ DM {speak_type} 发言生成完成")
+            return response
+            
+        except Exception as e:
+            print(f"❌ DM发言生成失败: {e}")
+            return self._get_speak_fallback(speak_type, chapter + 1)
+    
+    def _build_speak_system_prompt(self, speak_type: str) -> str:
+        """构建speak方法的系统提示词"""
+        base_prompt = """你是一名专业的剧本杀DM（游戏主持人），负责引导整个游戏进程。
+你的发言应该：
+1. 营造悬疑紧张的氛围
+2. 推进剧情发展  
+3. 引导玩家思考和互动
+4. 保持角色扮演的沉浸感
+5. 语言生动有趣，富有感染力"""
+
+        if speak_type == "chapter_start":
+            return base_prompt + """
+
+当前任务：章节开始发言
+- 简要回顾前情（如果不是第一章）
+- 介绍本章节的背景设定
+- 引导玩家进入角色状态
+- 设置本章节的主要任务或目标
+- 营造适当的氛围"""
+
+        elif speak_type == "chapter_end":
+            return base_prompt + """
+
+当前任务：章节结束发言
+- 总结本章节的关键事件
+- 点评玩家的表现和发现的线索
+- 为下一章节做铺垫（如果不是最后一章）
+- 保持悬念和期待感"""
+
+        elif speak_type == "game_end":
+            return base_prompt + """
+
+当前任务：游戏结束总结发言
+- 揭示完整真相和所有秘密
+- 总结整个游戏的精彩瞬间
+- 点评每个玩家的表现
+- 对推理过程进行分析
+- 给出最终的感谢和总结"""
+
+        elif speak_type == "interject":
+            return base_prompt + """
+
+当前任务：游戏过程中的穿插发言
+- 根据当前对话情况进行适当引导
+- 提供必要的提示或澄清
+- 控制游戏节奏
+- 适时推进剧情
+- 简短而有效，不要过度干预"""
+
+        return base_prompt
+
+    def _build_speak_user_prompt(self, speak_type: str, current_chapter: int, 
+                                total_chapters: int, script_data: dict, 
+                                chat_history: str, **kwargs) -> str:
+        """构建speak方法的用户提示词"""
+        
+        # 基础信息
+        title = script_data.get('title', '剧本杀游戏')
+        characters = script_data.get('characters', [])
+        dm_script = script_data.get('dm', [])
+        
+        # 当前章节信息
+        current_dm_content = ""
+        if current_chapter <= len(dm_script):
+            current_dm_content = dm_script[current_chapter - 1] if dm_script else "本章节内容"
+        
+        base_info = f"""## 剧本信息
+**剧本标题**: {title}
+**角色列表**: {', '.join(characters) if characters else '游戏角色'}
+**当前章节**: 第{current_chapter}章 (共{total_chapters}章)
+**当前章节内容**: {current_dm_content}
+"""
+
+        if speak_type == "chapter_start":
+            prompt = base_info + f"""
+
+## 发言场景
+这是第{current_chapter}章开始时的DM发言。
+
+## 聊天历史
+{chat_history if chat_history else "（游戏刚开始，暂无聊天记录）"}
+
+## 发言要求
+请作为DM为第{current_chapter}章开场，内容应该：
+1. {"欢迎玩家并介绍游戏背景" if current_chapter == 1 else f"简要回顾第{current_chapter-1}章的关键情况"}
+2. 介绍第{current_chapter}章的场景和任务
+3. 引导玩家开始本章节的互动
+4. 字数控制在200-400字之间
+"""
+
+        elif speak_type == "chapter_end":
+            prompt = base_info + f"""
+
+## 发言场景
+这是第{current_chapter}章结束时的DM总结发言。
+
+## 本章聊天历史
+{chat_history}
+
+## 发言要求
+请作为DM为第{current_chapter}章做总结，内容应该：
+1. 总结本章节玩家的主要发现和互动
+2. 点评重要的推理和线索发现
+3. {f"为第{current_chapter+1}章做铺垫" if current_chapter < total_chapters else "为最终真相揭示做准备"}
+4. 字数控制在300-500字之间
+"""
+
+        elif speak_type == "game_end":
+            # 获取真相信息
+            killer = kwargs.get('killer', '凶手身份待确认')
+            truth_info = kwargs.get('truth_info', '最终真相待揭示')
+            
+            prompt = base_info + f"""
+
+## 发言场景
+这是整个游戏结束时的最终总结发言。
+
+## 完整游戏历史
+{chat_history}
+
+## 真相信息
+**凶手**: {killer}
+**真相**: {truth_info}
+
+## 发言要求
+请作为DM为整个游戏做最终总结，内容应该：
+1. 完整揭示真相和所有秘密
+2. 解释关键线索和推理逻辑
+3. 点评每个玩家的精彩表现
+4. 总结整个游戏的亮点时刻
+5. 表达对玩家参与的感谢
+6. 字数控制在500-800字之间
+"""
+
+        elif speak_type == "interject":
+            trigger_reason = kwargs.get('trigger_reason', '游戏进程需要')
+            guidance = kwargs.get('guidance', '')
+            
+            prompt = base_info + f"""
+
+## 发言场景
+在第{current_chapter}章进行过程中的穿插发言。
+
+## 触发原因
+{trigger_reason}
+
+## 当前对话情况
+{chat_history[-1000:] if len(chat_history) > 1000 else chat_history}
+
+## 特殊指导要求
+{guidance}
+
+## 发言要求
+请作为DM进行简短的穿插发言，内容应该：
+1. 针对当前情况进行适当引导
+2. {"提供必要的提示或澄清" if guidance else "推进游戏进程"}
+3. 保持游戏的流畅性
+4. 字数控制在100-200字之间
+"""
+
+        return prompt
+
+    def _get_speak_fallback(self, speak_type: str, current_chapter: int) -> str:
+        """获取speak方法的备用发言"""
+        fallback_speeches = {
+            "chapter_start": f"欢迎各位来到第{current_chapter}章！让我们继续深入这个扑朔迷离的案件。请各位仔细观察，认真思考，真相就在你们中间...",
+            "chapter_end": f"第{current_chapter}章到此结束。各位的表现都很精彩，一些重要的线索已经浮现。让我们期待接下来的发展...",
+            "game_end": "经过激烈的推理和讨论，真相终于大白于天下！感谢各位的精彩演出，这真是一场难忘的推理之旅！",
+            "interject": "请各位继续，我在这里静静观察着你们的推理过程..."
+        }
+        return fallback_speeches.get(speak_type, "DM发言暂时无法生成，请继续游戏。")
+
     def _submit_image_task(self, prompt: str, size: str) -> str:
         """提交图片生成任务"""
         url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"

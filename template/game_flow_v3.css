@@ -30,6 +30,7 @@ main {
     padding: 0;
     height: 100vh;
     padding-top: 70px;
+    box-sizing: border-box;
 }
 
 /* 悬疑背景 */
@@ -75,7 +76,7 @@ main {
 .game-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     background: transparent;
     position: relative;
     z-index: 2;
@@ -369,6 +370,14 @@ main {
     gap: 0;
     flex: 1;
     overflow: hidden;
+    height: 100%;
+}
+
+/* 中央聊天区域的垂直布局 */
+.game-main > .messages-area {
+    display: grid;
+    grid-template-rows: 1fr auto; /* 消息区域占主要空间，输入区域自适应 */
+    min-height: 0; /* 允许flex子项收缩 */
 }
 
 /* 左侧角色面板 */
@@ -489,6 +498,7 @@ main {
     flex-direction: column;
     background: rgba(0, 0, 0, 0.2);
     overflow: hidden;
+    height: 100%;
 }
 
 .messages-container {
@@ -622,6 +632,7 @@ main {
     padding: 20px;
     backdrop-filter: blur(10px);
     flex-shrink: 0;
+    position: relative;
 }
 
 .phase-indicator {
@@ -649,6 +660,7 @@ main {
 
 .speak-input {
     margin-bottom: 15px;
+    display: block !important;
 }
 
 .speak-input label {
@@ -687,33 +699,28 @@ main {
 
 .query-section {
     margin-bottom: 15px;
+    position: relative; /* 为了让绝对定位的查询列表能正确定位 */
+    display: block !important;
 }
 
-.query-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.query-header label {
-    color: #FFD700;
-    font-weight: bold;
-}
+/* 移除了query-header，现在询问按钮在bottom-controls中 */
 
 .query-toggle-btn {
+    display: inline-block !important;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: #E0E0E0;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.85em;
+    font-size: 0.9em;
+    font-weight: bold;
     transition: all 0.3s ease;
 }
 
 .query-toggle-btn:hover {
     background: rgba(255, 255, 255, 0.2);
+    border-color: #FFD700;
 }
 
 .query-list {
@@ -721,9 +728,17 @@ main {
     flex-direction: column;
     gap: 10px;
     padding: 15px;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.9);
     border-radius: 8px;
     border: 1px solid #444;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    margin-bottom: 10px;
 }
 
 .query-item {
@@ -754,26 +769,45 @@ main {
     border-color: #FFD700;
 }
 
+/* 底部控制区域 */
+.bottom-controls {
+    display: flex !important;
+    justify-content: space-between; /* 左右分布 */
+    align-items: center;
+    margin-top: 15px;
+    gap: 15px;
+    min-height: 50px; /* 确保有足够的高度 */
+    background: rgba(255, 255, 255, 0.05); /* 添加背景以便调试 */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* 添加边框以便调试 */
+    border-radius: 8px;
+    padding: 10px;
+}
+
 .send-section {
-    text-align: center;
+    display: flex;
+    justify-content: flex-end; /* 发送按钮右对齐 */
+    margin-top: 15px;
 }
 
 .send-btn {
+    display: inline-block !important;
     background: linear-gradient(135deg, #228B22, #32CD32);
-    border: none;
+    border: 1px solid #32CD32;
     color: white;
-    padding: 12px 30px;
-    border-radius: 25px;
+    padding: 12px 24px;
+    border-radius: 8px;
     cursor: pointer;
     font-family: inherit;
     font-size: 1em;
     font-weight: bold;
     transition: all 0.3s ease;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    min-width: 80px;
 }
 
 .send-btn:hover {
     background: linear-gradient(135deg, #32CD32, #00FF00);
+    border-color: #00FF00;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(50, 205, 50, 0.4);
 }
@@ -788,27 +822,32 @@ main {
 
 /* 阶段禁用状态 */
 .phase-disabled {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
-    background: rgba(255, 0, 0, 0.1);
-    border: 2px dashed #FF6B6B;
-    border-radius: 12px;
-    margin: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    z-index: 100;
 }
 
 .disabled-message {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 15px;
     color: #FF6B6B;
-    font-size: 1.1em;
+    font-size: 1.2em;
     font-weight: bold;
+    text-align: center;
 }
 
 .disabled-icon {
-    font-size: 2em;
+    font-size: 5em;
 }
 
 /* 右侧剧本工具面板 */

@@ -124,7 +124,7 @@
             </div>
 
             <!-- 输入区域 -->
-            <div class="input-area" id="inputArea" style="display: none;">
+            <div class="input-area" id="inputArea" style="display: block;">
                 <div class="phase-indicator" id="phaseIndicator">
                     <span class="phase-text" id="phaseText">等待阶段</span>
                     <span class="phase-timer" id="phaseTimerDisplay">--:--</span>
@@ -139,30 +139,27 @@
 
                 <!-- 询问其他玩家 -->
                 <div class="query-section" id="querySection">
-                    <div class="query-header">
-                        <label>❓ 询问其他玩家：</label>
-                        <button class="query-toggle-btn" id="queryToggleBtn" onclick="toggleQuerySection()">
-                            展开询问
-                        </button>
-                    </div>
                     <div class="query-list" id="queryList" style="display: none;">
                         <!-- 动态生成询问列表 -->
                     </div>
                 </div>
 
-                <!-- 发送按钮 -->
-                <div class="send-section">
+                <!-- 底部控制区域 -->
+                <div class="bottom-controls">
+                    <button class="query-toggle-btn" id="queryToggleBtn" onclick="toggleQuerySection()">
+                        ❓ 询问其他玩家
+                    </button>
                     <button class="send-btn" id="sendBtn" onclick="prepareSendMessage()">
                         📤 发送
                     </button>
                 </div>
-            </div>
 
-            <!-- 阶段禁用提示 -->
-            <div class="phase-disabled" id="phaseDisabled" style="display: none;">
-                <div class="disabled-message">
-                    <span class="disabled-icon">🚫</span>
-                    <span class="disabled-text" id="disabledText">当前阶段不允许发言</span>
+                <!-- 阶段禁用提示 -->
+                <div class="phase-disabled" id="phaseDisabled" style="display: none;">
+                    <div class="disabled-message">
+                        <span class="disabled-icon">🚫</span>
+                        <span class="disabled-text" id="disabledText">当前阶段不允许发言</span>
+                    </div>
                 </div>
             </div>
         </div>

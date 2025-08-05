@@ -180,20 +180,54 @@
             form.addEventListener('submit', function(e) {
                 const submitBtn = form.querySelector('input[type="submit"]');
                 if (submitBtn) {
+                    // 检查是否有验证错误
+                    const invalidFields = form.querySelectorAll('.is-invalid');
+                    if (invalidFields.length > 0) {
+                        return; // 让表单正常提交以显示服务端错误
+                    }
+                    
                     submitBtn.value = '正在验证身份...';
                     submitBtn.disabled = true;
                     submitBtn.classList.add('loading');
                     
-                    // 如果表单验证失败，恢复按钮状态
+                    // 添加超时保护
                     setTimeout(() => {
-                        if (document.querySelector('.is-invalid')) {
+                        if (submitBtn.disabled) {
                             submitBtn.value = '登录';
                             submitBtn.disabled = false;
                             submitBtn.classList.remove('loading');
+                            showErrorAlert('登录超时，请检查网络连接后重试。');
                         }
-                    }, 100);
+                    }, 15000); // 15秒超时
                 }
             });
+        }
+        
+        // 错误提示函数
+        function showErrorAlert(message) {
+            // 移除已存在的错误提示
+            const existingAlert = document.querySelector('.custom-error-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            
+            // 创建新的错误提示
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show custom-error-alert';
+            alertDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>${message}
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // 5秒后自动消失
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
         }
         
         // 添加悬疑声音效果（可选）

@@ -2,7 +2,7 @@ from flask import Flask, render_template, send_from_directory, jsonify, request,
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, EmailField, BooleanField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
+from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, Optional
 import os
 import secrets
 from datetime import datetime
@@ -74,7 +74,7 @@ class RegisterForm(FlaskForm):
         DataRequired(), 
         Length(3, 80, message='用户名长度应在3-80个字符之间')
     ])
-    email = EmailField('邮箱', validators=[DataRequired(), Email()])
+    email = EmailField('邮箱', validators=[Optional(), Email()])
     nickname = StringField('昵称', validators=[Length(0, 80)])
     password = PasswordField('密码', validators=[
         DataRequired(), 
@@ -86,15 +86,8 @@ class RegisterForm(FlaskForm):
     ])
     submit = SubmitField('注册')
     
-    def validate_username(self, username):
-        user = User.query.filter_by(username=username.data).first()
-        if user:
-            raise ValidationError('用户名已存在，请选择其他用户名。')
-    
-    def validate_email(self, email):
-        user = User.query.filter_by(email=email.data).first()
-        if user:
-            raise ValidationError('邮箱已被注册，请使用其他邮箱。')
+    # 移除自动验证方法，在视图中手动检查
+    # 这样可以避免表单验证与路由验证的冲突
 
 class MessageForm(FlaskForm):
     """消息表单"""
@@ -103,11 +96,12 @@ class MessageForm(FlaskForm):
 
 @app.route('/')
 def index():
-    """首页路由"""
+    """首页路由 - 重定向到相应页面"""
     # 如果用户未登录，跳转到登录页面
     if not current_user.is_authenticated:
         return redirect(url_for('login'))
-    return render_template('index.html')
+    # 如果用户已登录，直接跳转到游戏页面
+    return redirect(url_for('chat'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -165,18 +159,57 @@ def register():
     
     form = RegisterForm()
     if form.validate_on_submit():
-        user = User(
-            username=form.username.data,
-            email=form.email.data,
-            password=form.password.data,
-            nickname=form.nickname.data or form.username.data
-        )
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('注册成功！请登录。', 'success')
-        return redirect(url_for('login'))
+        try:
+            # 只检查用户名是否已存在 - 邮箱允许重复或为空
+            existing_user = User.query.filter_by(username=form.username.data).first()
+            if existing_user:
+                flash('注册失败：该探案者代号已被使用，请换一个代号。', 'error')
+                return render_template('register.html', form=form)
+            
+            # 创建新用户
+            user = User(
+                username=form.username.data,
+                email=form.email.data or None,  # 如果邮箱为空则存储为None
+                password=form.password.data,
+                nickname=form.nickname.data or form.username.data
+            )
+            
+            db.session.add(user)
+            db.session.commit()
+            
+            # 自动登录新注册的用户
+            login_user(user, remember=False)
+            user.update_login_info()
+            
+            # 记录登录日志
+            log_entry = LoginLog(
+                username=user.username,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent'),
+                success=True,
+                user_id=user.id
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+            
+            flash(f'欢迎加入探案团队，{user.nickname}！案件现场等待你的到来...', 'success')
+            return redirect(url_for('chat'))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"注册失败: {e}")
+            flash(f'注册失败：创建探案者档案时发生错误，请稍后重试。如果问题持续存在，请联系管理员。', 'error')
+            return render_template('register.html', form=form)
+    else:
+        # 表单验证失败时显示具体错误信息
+        if request.method == 'POST':
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f'{form[field].label.text}: {error}')
+            
+            if error_messages:
+                flash(f'注册失败：{"; ".join(error_messages)}', 'error')
     
     return render_template('register.html', form=form)
 
@@ -188,6 +221,107 @@ def logout():
     logout_user()
     flash(f'{username}，您已成功登出。', 'info')
     return redirect(url_for('index'))
+
+@app.route('/admin/clear-all-sessions')
+def clear_all_sessions():
+    """清除所有用户登录状态（管理员功能）"""
+    try:
+        # 清除Flask-Login的记住我token
+        from models import User
+        users = User.query.all()
+        for user in users:
+            user.last_login = None
+            user.is_active = True  # 确保账户是活跃的
+        db.session.commit()
+        
+        # 清除当前session
+        session.clear()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'已清除所有用户登录状态，共{len(users)}个用户账户已重置',
+            'cleared_users': len(users)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': f'清除登录状态失败: {str(e)}'
+        }), 500
+
+@app.route('/admin/reset-database')
+def reset_database():
+    """重置数据库（删除所有数据并重新创建表）"""
+    try:
+        # 清除当前session
+        session.clear()
+        
+        # 删除所有表
+        db.drop_all()
+        
+        # 重新创建表
+        db.create_all()
+        
+        return jsonify({
+            'status': 'success',
+            'message': '数据库已重置，所有数据已清空，表结构已重新创建'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'重置数据库失败: {str(e)}'
+        }), 500
+
+@app.route('/admin/list-users')
+def list_users():
+    """列出所有用户（调试用）"""
+    try:
+        from models import User
+        users = User.query.all()
+        user_list = []
+        for user in users:
+            user_list.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'nickname': user.nickname,
+                'is_active': user.is_active,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'共找到 {len(users)} 个用户',
+            'users': user_list
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'获取用户列表失败: {str(e)}'
+        }), 500
+
+@app.route('/admin/delete-all-users')
+def delete_all_users():
+    """管理员删除所有用户（危险操作）"""
+    try:
+        from models import User
+        user_count = User.query.count()
+        User.query.delete()
+        db.session.commit()
+        session.clear()
+        return jsonify({
+            'status': 'success',
+            'message': f'已删除所有 {user_count} 个用户账户，数据库已清空'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': f'删除用户失败: {str(e)}'
+        }), 500
 
 @app.route('/chat')
 @login_required

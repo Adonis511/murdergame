@@ -12,7 +12,7 @@ class User(UserMixin, db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(120), nullable=True, index=True)  # 移除unique约束，允许邮箱重复
     password_hash = db.Column(db.String(255), nullable=False)
     nickname = db.Column(db.String(80), nullable=True)
     avatar = db.Column(db.String(255), nullable=True)
@@ -45,7 +45,9 @@ class User(UserMixin, db.Model):
         if self.email:
             email_hash = hashlib.md5(self.email.lower().encode('utf-8')).hexdigest()
             return f"https://www.gravatar.com/avatar/{email_hash}?d=identicon&s=80"
-        return None
+        # 如果没有邮箱，使用用户名生成默认头像
+        username_hash = hashlib.md5(self.username.lower().encode('utf-8')).hexdigest()
+        return f"https://www.gravatar.com/avatar/{username_hash}?d=identicon&s=80"
     
     def update_login_info(self):
         """更新登录信息"""
@@ -157,10 +159,10 @@ def init_db(app):
             admin_user.is_admin = True
             db.session.add(admin_user)
             
-            # 创建测试用户
+            # 创建测试用户（无邮箱测试）
             test_user = User(
                 username='test',
-                email='test@example.com', 
+                email=None,  # 测试无邮箱注册
                 password='test123',
                 nickname='测试用户'
             )

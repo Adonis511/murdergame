@@ -108,7 +108,7 @@
             </button>
         </div>
     </div>
-
+    
     <!-- 游戏配置面板 -->
     <div class="config-panel" id="configPanel" style="display: none;">
         <h4>🎮 游戏配置</h4>
@@ -139,7 +139,7 @@
             <button class="mystery-btn confirm-btn" onclick="applyGameConfig()">应用配置</button>
         </div>
     </div>
-
+        
     <!-- 角色选择面板 -->
     <div class="character-panel" id="characterPanel" style="display: none;">
         <h4>🎭 选择你的角色</h4>
@@ -148,7 +148,7 @@
         </div>
         <button class="mystery-btn confirm-btn" id="confirmCharacterBtn" onclick="confirmCharacterSelection()" disabled>
             确认角色选择
-        </button>
+            </button>
     </div>
 
     <!-- 主游戏区域 - 三列布局 -->
@@ -226,11 +226,11 @@
                         <p class="game-tip">💡 点击上方 <strong>"配置"</strong> 设置游戏参数，然后 <strong>"新游戏"</strong> 开始你的推理之旅...</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- 输入区域 -->
+        </div>
+        
+        <!-- 输入区域 -->
             <div class="game-input-area" id="gameInputArea">
-                <div class="input-container">
+            <div class="input-container">
                     <div class="input-header">
                         <span class="input-mode" id="inputMode">💬 自由发言</span>
                         <div class="input-options">
@@ -265,11 +265,11 @@
                         </select>
                     </div>
                     
-                    <textarea 
-                        id="messageInput" 
+                <textarea 
+                    id="messageInput" 
                         placeholder="请输入你的发言内容... (支持Markdown格式)"
-                        rows="3"
-                    ></textarea>
+                    rows="3"
+                ></textarea>
                     
                     <div class="input-footer">
                         <div class="input-stats">
@@ -281,11 +281,11 @@
                         <button id="sendBtn" class="send-btn" disabled>
                             <span class="btn-icon">📤</span>
                             <span class="btn-text">发送</span>
-                        </button>
-                    </div>
-                </div>
+                </button>
             </div>
         </div>
+    </div>
+</div>
 
         <!-- 右侧面板：剧本和工具 -->
         <div class="right-sidebar">
@@ -296,7 +296,7 @@
                     <button class="script-tab" data-chapter="1" onclick="showScriptChapter(1)">第1章</button>
                     <button class="script-tab" data-chapter="2" onclick="showScriptChapter(2)">第2章</button>
                     <button class="script-tab" data-chapter="3" onclick="showScriptChapter(3)">第3章</button>
-                </div>
+            </div>
                 <div class="script-content" id="scriptContent">
                     <div class="script-placeholder">
                         选择角色后将显示您的剧本内容...
@@ -387,10 +387,10 @@
 // 全局游戏状态
 window.gameState = {
     user: {
-        id: {{ user.id }},
-        username: "{{ user.username | safe }}",
-        nickname: "{{ user.nickname | safe }}",
-        avatar: "{{ user.avatar | safe if user.avatar else '' }}"
+    id: {{ user.id }},
+    username: "{{ user.username | safe }}",
+    nickname: "{{ user.nickname | safe }}",
+    avatar: "{{ user.avatar | safe if user.avatar else '' }}"
     },
     currentCharacter: null,
     gameSession: null,

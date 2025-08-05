@@ -39,3 +39,6 @@ class Config:
     GAME_CHAPTER_CYCLES = int(os.environ.get('GAME_CHAPTER_CYCLES', '3'))  # 每章节循环次数 - 默认3次
     GAME_DM_SPEAK_DELAY = int(os.environ.get('GAME_DM_SPEAK_DELAY', '2'))  # DM发言延迟(秒) - 默认2秒
     GAME_AI_RESPONSE_DELAY = int(os.environ.get('GAME_AI_RESPONSE_DELAY', '3'))  # AI玩家回应延迟(秒) - 默认3秒
+    
+    # 默认剧本路径配置（如果为None或路径无效则使用AI生成）
+    DEFAULT_SCRIPT_PATH = os.environ.get('DEFAULT_SCRIPT_PATH', 'log/250805154217')  # 例如: 'log/250805151240'

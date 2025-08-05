@@ -340,6 +340,7 @@ def get_config():
             'GAME_CHAPTER_CYCLES': Config.GAME_CHAPTER_CYCLES,
             'GAME_DM_SPEAK_DELAY': Config.GAME_DM_SPEAK_DELAY,
             'GAME_AI_RESPONSE_DELAY': Config.GAME_AI_RESPONSE_DELAY,
+            'DEFAULT_SCRIPT_PATH': Config.DEFAULT_SCRIPT_PATH,
             'supported_languages': [
                 'javascript', 'python', 'java', 'html', 'css', 
                 'markdown', 'json', 'xml', 'sql', 'cpp', 'csharp'

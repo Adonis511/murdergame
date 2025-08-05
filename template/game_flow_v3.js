@@ -50,24 +50,39 @@ class GameFlowController {
         }
     }
     
-    async loadGameConfig() {
-        try {
-            const response = await fetch('/api/config');
-            const data = await response.json();
-            if (data.status === 'success') {
-                // 更新配置
-                this.config.playerSpeakTime = data.data.GAME_PLAYER_SPEAK_TIME || 180;
-                this.config.playerAnswerTime = data.data.GAME_PLAYER_ANSWER_TIME || 60;
-                this.config.chapterCycles = data.data.GAME_CHAPTER_CYCLES || 3;
-                this.config.dmSpeakDelay = data.data.GAME_DM_SPEAK_DELAY || 2;
-                this.config.aiResponseDelay = data.data.GAME_AI_RESPONSE_DELAY || 3;
-                
-                console.log('游戏配置加载成功:', this.config);
-            }
-        } catch (error) {
-            console.error('加载游戏配置失败:', error);
-        }
-    }
+         async loadGameConfig() {
+         try {
+             const response = await fetch('/api/config');
+             const data = await response.json();
+             if (data.status === 'success') {
+                 // 更新配置
+                 this.config.playerSpeakTime = data.data.GAME_PLAYER_SPEAK_TIME || 180;
+                 this.config.playerAnswerTime = data.data.GAME_PLAYER_ANSWER_TIME || 60;
+                 this.config.chapterCycles = data.data.GAME_CHAPTER_CYCLES || 3;
+                 this.config.dmSpeakDelay = data.data.GAME_DM_SPEAK_DELAY || 2;
+                 this.config.aiResponseDelay = data.data.GAME_AI_RESPONSE_DELAY || 3;
+                 
+                 // 保存默认剧本路径
+                 this.config.defaultScriptPath = data.data.DEFAULT_SCRIPT_PATH || null;
+                 
+                 console.log('游戏配置加载成功:', this.config);
+                 
+                 // 如果有默认剧本路径，自动设置配置
+                 if (this.config.defaultScriptPath) {
+                     this.gameState.config = {
+                         scriptSource: 'local',
+                         localScriptPath: this.config.defaultScriptPath,
+                         generateImages: true
+                     };
+                     
+                     // 更新配置界面
+                     this.updateConfigUI();
+                 }
+             }
+         } catch (error) {
+             console.error('加载游戏配置失败:', error);
+         }
+     }
     
     checkExistingGame() {
         // 检查是否有正在进行的游戏
@@ -179,7 +194,7 @@ class GameFlowController {
 
     async createNewGame(generateImages = true) {
         try {
-            this.addSystemMessage('🎭 正在生成新的剧本杀剧本...');
+            this.addSystemMessage('🎭 正在生成剧本...');
             this.showProgressModal();
             
             const response = await fetch('/api/game/new', {
@@ -204,7 +219,7 @@ class GameFlowController {
                 } else {
                     this.hideProgressModal();
                     this.showCharacterSelection(data.data.characters);
-                    this.addSystemMessage('✅ 剧本生成成功！请选择您要扮演的角色。');
+                    this.addSystemMessage('✅ 生成完成，请选择角色');
                 }
             } else {
                 this.hideProgressModal();
@@ -213,7 +228,7 @@ class GameFlowController {
         } catch (error) {
             console.error('启动新游戏失败:', error);
             this.hideProgressModal();
-            this.addSystemMessage('❌ 网络错误，请检查连接后重试。');
+            this.addSystemMessage('❌ 网络错误');
         }
     }
 
@@ -224,7 +239,7 @@ class GameFlowController {
         }
 
         try {
-            this.addSystemMessage('📂 正在加载游戏...');
+            this.addSystemMessage('📂 正在加载...');
             
             const response = await fetch('/api/game/load', {
                 method: 'POST',
@@ -243,14 +258,14 @@ class GameFlowController {
                 this.updateStoryTitle(data.data.story_title);
                 this.showCharacterSelection(data.data.characters);
                 
-                this.addSystemMessage('✅ 游戏加载成功！请选择您的角色。');
+                this.addSystemMessage('✅ 加载完成，请选择角色');
             } else {
                 this.addSystemMessage('❌ 加载游戏失败：' + data.message);
             }
-        } catch (error) {
-            console.error('加载游戏失败:', error);
-            this.addSystemMessage('❌ 网络错误，请检查连接后重试。');
-        }
+                 } catch (error) {
+             console.error('加载游戏失败:', error);
+             this.addSystemMessage('❌ 网络错误');
+         }
     }
     
     // ================== 角色选择管理 ==================
@@ -280,60 +295,61 @@ class GameFlowController {
         this.gameState.availableCharacters = characters;
     }
     
-    selectCharacter(characterName, index) {
-        document.querySelectorAll('.character-card').forEach(card => {
-            card.classList.remove('selected');
-        });
-        
-        document.querySelectorAll('.character-card')[index].classList.add('selected');
-        
-        this.gameState.selectedCharacter = characterName;
-        document.getElementById('confirmCharacterBtn').disabled = false;
-        
-        this.addSystemMessage(`您选择了角色：${characterName}`);
-    }
+         selectCharacter(characterName, index) {
+         document.querySelectorAll('.character-card').forEach(card => {
+             card.classList.remove('selected');
+         });
+         
+         document.querySelectorAll('.character-card')[index].classList.add('selected');
+         
+         this.gameState.selectedCharacter = characterName;
+         document.getElementById('confirmCharacterBtn').disabled = false;
+         
+         // 移除角色选择确认提示，界面已有足够的视觉反馈
+     }
     
-    async confirmCharacterSelection() {
-        if (!this.gameState.selectedCharacter) return;
-        
-        try {
-            this.addSystemMessage('🎭 正在确认角色选择...');
-            
-            const response = await fetch('/api/game/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    game_session: this.gameState.gameSession,
-                    character_name: this.gameState.selectedCharacter,
-                    user_id: this.gameState.user.id
-                })
-            });
-            
-            const data = await response.json();
-            if (data.status === 'success') {
-                this.gameState.currentCharacter = this.gameState.selectedCharacter;
-                this.gameState.gameMode = 'playing';
-                
-                // 隐藏角色选择，显示游戏界面
-                document.getElementById('characterSelection').style.display = 'none';
-                this.showMainGameInterface();
-                
-                // 加载角色列表和剧本
-                await this.loadCharacters();
-                await this.loadCharacterScript();
-                
-                // 开始游戏
-                await this.startGameSession();
-                
-                this.addSystemMessage(`✅ 成功加入游戏！您现在是：${this.gameState.currentCharacter}`);
-            } else {
-                this.addSystemMessage('❌ 加入游戏失败：' + data.message);
-            }
-        } catch (error) {
-            console.error('确认角色选择失败:', error);
-            this.addSystemMessage('❌ 网络错误，请检查连接后重试。');
-        }
-    }
+         async confirmCharacterSelection() {
+         if (!this.gameState.selectedCharacter) return;
+         
+         try {
+             // 移除角色选择过程提示
+             
+             const response = await fetch('/api/game/join', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                     game_session: this.gameState.gameSession,
+                     character_name: this.gameState.selectedCharacter,
+                     user_id: this.gameState.user.id
+                 })
+             });
+             
+             const data = await response.json();
+             if (data.status === 'success') {
+                 this.gameState.currentCharacter = this.gameState.selectedCharacter;
+                 this.gameState.gameMode = 'playing';
+                 
+                 // 隐藏角色选择，显示游戏界面
+                 document.getElementById('characterSelection').style.display = 'none';
+                 this.showMainGameInterface();
+                 
+                 // 加载角色列表和剧本
+                 await this.loadCharacters();
+                 await this.loadCharacterScript();
+                 
+                 // 开始游戏
+                 await this.startGameSession();
+                 
+                 // 只在游戏真正开始时提示一次
+                 this.addSystemMessage(`🎭 游戏开始 - ${this.gameState.currentCharacter}`);
+             } else {
+                 this.addSystemMessage('❌ 加入游戏失败：' + data.message);
+             }
+         } catch (error) {
+             console.error('确认角色选择失败:', error);
+             this.addSystemMessage('❌ 网络错误');
+         }
+     }
     
     // ================== 主游戏界面管理 ==================
     
@@ -356,30 +372,39 @@ class GameFlowController {
         }
     }
     
-    displayCharactersList() {
-        const container = document.getElementById('charactersList');
-        
-        container.innerHTML = this.gameState.characters.map(char => {
-            const isCurrentUser = char.is_current_user;
-            const playerType = char.is_ai ? 'AI' : '玩家';
-            const status = isCurrentUser ? '你' : (char.is_ai ? '待机中' : '在线');
-            
-            const avatarHtml = char.image ? 
-                `<img src="/${char.image}" class="character-avatar-small" alt="${char.name}">` :
-                `<div class="character-avatar-placeholder">${this.getCharacterEmoji(char.name)}</div>`;
-            
-            return `
-                <div class="character-item ${isCurrentUser ? 'current-user' : ''} ${char.is_ai ? 'ai-player' : ''}">
-                    ${avatarHtml}
-                    <div class="character-info">
-                        <div class="name">${char.name}</div>
-                        <div class="status">${status}</div>
-                        <div class="player-type">${playerType}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
+         displayCharactersList() {
+         const container = document.getElementById('charactersList');
+         
+         container.innerHTML = this.gameState.characters.map(char => {
+             const isCurrentUser = char.is_current_user;
+             const playerType = char.is_ai ? 'AI' : '玩家';
+             const status = isCurrentUser ? '你' : (char.is_ai ? '待机中' : '在线');
+             
+             // 改进图片路径处理
+             let avatarHtml;
+             if (char.image) {
+                 // 确保图片路径正确
+                 const imagePath = char.image.startsWith('/') ? char.image : `/${char.image}`;
+                 avatarHtml = `<img src="${imagePath}" class="character-avatar-small" alt="${char.name}" 
+                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                              <div class="character-avatar-placeholder" style="display:none;">${this.getCharacterEmoji(char.name)}</div>`;
+             } else {
+                 avatarHtml = `<div class="character-avatar-placeholder">${this.getCharacterEmoji(char.name)}</div>`;
+             }
+             
+             return `
+                 <div class="character-item ${isCurrentUser ? 'current-user' : ''} ${char.is_ai ? 'ai-player' : ''}" 
+                      title="${char.name} - ${playerType} - ${status}">
+                     ${avatarHtml}
+                     <div class="character-info">
+                         <div class="name">${char.name}</div>
+                         <div class="status">${status}</div>
+                         <div class="player-type">${playerType}</div>
+                     </div>
+                 </div>
+             `;
+         }).join('');
+     }
     
     async loadCharacterScript() {
         if (!this.gameState.gameSession || !this.gameState.currentCharacter) return;
@@ -429,7 +454,8 @@ class GameFlowController {
     
     async startChapter(chapterNum) {
         try {
-            this.addSystemMessage(`📖 第${chapterNum}章即将开始...`);
+            // 只在章节转换时提示
+            this.addSystemMessage(`📖 第${chapterNum}章开始`);
             
             const response = await fetch('/api/game/chapter/start', {
                 method: 'POST',
@@ -453,13 +479,13 @@ class GameFlowController {
                 // 开始DM发言阶段
                 this.startDMSpeakPhase(data.data.dm_speech);
                 
-                this.addSystemMessage(`✅ 第${chapterNum}章已开始！`);
+                // 移除重复的章节开始提示
             } else {
                 this.addSystemMessage('❌ 开始章节失败：' + data.message);
             }
         } catch (error) {
             console.error('开始章节失败:', error);
-            this.addSystemMessage('❌ 网络错误，请检查连接后重试。');
+            this.addSystemMessage('❌ 网络错误');
         }
     }
     
@@ -486,11 +512,22 @@ class GameFlowController {
         }, 1000);
     }
     
-    startPlayerSpeakPhase() {
+    async startPlayerSpeakPhase() {
         this.gameState.currentPhase = 'player_speak';
         this.updatePhaseDisplay('💬 玩家发言阶段', '你可以发言并询问其他玩家');
         this.enableInput();
         this.setupQueryList();
+        
+        // 初始化发言状态跟踪
+        this.initializeSpeakingStatus();
+        
+        // 触发所有AI玩家发言
+        setTimeout(async () => {
+            await this.triggerAISpeaking();
+        }, 2000); // 2秒后AI玩家开始发言
+        
+        // 开始监控发言状态
+        this.startSpeakingStatusMonitor();
         
         // 启动计时器
         this.startPhaseTimer(this.config.playerSpeakTime, () => {
@@ -501,11 +538,35 @@ class GameFlowController {
     
     startPlayerAnswerPhase(queries) {
         this.gameState.currentPhase = 'player_answer';
-        this.updatePhaseDisplay('🗣️ 玩家回答阶段', '等待被询问的玩家回答问题');
-        this.disableInput('当前是回答阶段，请等待其他玩家回答');
+        this.updatePhaseDisplay('🗣️ 玩家回答阶段', '被询问的玩家可以回答问题');
+        
+        // 初始化回复状态跟踪
+        this.initializeAnswerStatus(queries);
+        
+        // 检查是否有人需要回复
+        if (this.gameState.answerStatus.needToAnswer.size === 0) {
+            // 没有人需要回复，直接进入下一阶段
+            this.addSystemMessage('📋 无人需要回复，直接进入下一轮');
+            setTimeout(() => {
+                this.endAnswerPhase();
+            }, 1000);
+            return;
+        }
+        
+        // 检查人类玩家是否被询问
+        const userNeedsToAnswer = this.checkIfUserNeedsToAnswer(queries);
+        
+        if (userNeedsToAnswer) {
+            this.enableAnswerInput();
+        } else {
+            this.disableInput('当前是回答阶段，等待其他玩家回答');
+        }
         
         // 处理AI玩家的自动回答
         this.handleAIPlayerAnswers(queries);
+        
+        // 启动回复状态监控
+        this.startAnswerStatusMonitor();
         
         // 启动计时器
         this.startPhaseTimer(this.config.playerAnswerTime, () => {
@@ -514,64 +575,252 @@ class GameFlowController {
         });
     }
     
-    async handleAIPlayerAnswers(queries) {
-        // 延迟后让AI玩家回答
-        setTimeout(async () => {
-            for (const [targetPlayer, question] of Object.entries(queries)) {
-                const targetChar = this.gameState.characters.find(c => c.name === targetPlayer);
-                if (targetChar && targetChar.is_ai) {
-                    try {
-                        // 调用AI回答API
-                        const response = await fetch('/api/game/ai_answer', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                game_session: this.gameState.gameSession,
-                                character_name: targetPlayer,
-                                question: question,
-                                asker: this.gameState.currentCharacter,
-                                chapter: this.gameState.currentChapter
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        if (data.status === 'success') {
-                            this.addPlayerMessage(targetPlayer, data.data.answer, 'response');
-                        }
-                    } catch (error) {
-                        console.error(`AI玩家 ${targetPlayer} 回答失败:`, error);
-                    }
-                }
-            }
-        }, this.config.aiResponseDelay * 1000);
-    }
+         async handleAIPlayerAnswers(queries) {
+         // 收集所有需要AI回答的问题
+         const aiQuestions = [];
+         
+         // 从当前阶段的所有询问中筛选AI需要回答的问题
+         if (this.gameState && this.gameState.action_history) {
+             // 获取当前循环的所有询问
+             const currentCycle = this.gameState.currentCycle;
+             const currentChapter = this.gameState.currentChapter;
+             
+             if (this.gameState.action_history) {
+                 for (const action of this.gameState.action_history) {
+                     if (action.type === 'player_action' && 
+                         action.cycle === currentCycle && 
+                         action.chapter === currentChapter &&
+                         action.queries) {
+                         
+                         for (const [targetPlayer, question] of Object.entries(action.queries)) {
+                             const targetChar = this.gameState.characters.find(c => c.name === targetPlayer);
+                             if (targetChar && targetChar.is_ai) {
+                                 aiQuestions.push({
+                                     targetPlayer,
+                                     question,
+                                     asker: action.character
+                                 });
+                             }
+                         }
+                     }
+                 }
+             }
+         }
+         
+         // 如果有传入的queries参数，也加入处理
+         for (const [targetPlayer, question] of Object.entries(queries)) {
+             const targetChar = this.gameState.characters.find(c => c.name === targetPlayer);
+             if (targetChar && targetChar.is_ai) {
+                 aiQuestions.push({
+                     targetPlayer,
+                     question,
+                     asker: this.gameState.currentCharacter
+                 });
+             }
+         }
+         
+         // 延迟后让AI玩家依次回答
+         if (aiQuestions.length > 0) {
+             // 移除AI回答提示，让游戏流程更自然
+             
+             for (let i = 0; i < aiQuestions.length; i++) {
+                 const questionData = aiQuestions[i];
+                 
+                 setTimeout(async () => {
+                     try {
+                         // 调用AI回答API
+                         const response = await fetch('/api/game/ai_answer', {
+                             method: 'POST',
+                             headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify({
+                                 game_session: this.gameState.gameSession,
+                                 character_name: questionData.targetPlayer,
+                                 question: questionData.question,
+                                 asker: questionData.asker,
+                                 chapter: this.gameState.currentChapter
+                             })
+                         });
+                         
+                         const data = await response.json();
+                         if (data.status === 'success') {
+                             this.addPlayerMessage(
+                                 questionData.targetPlayer, 
+                                 `回答 ${questionData.asker} 的问题：${data.data.answer}`, 
+                                 'response'
+                             );
+                         } else {
+                             this.addPlayerMessage(
+                                 questionData.targetPlayer, 
+                                 `[${questionData.targetPlayer}选择不回答这个问题]`, 
+                                 'response'
+                             );
+                         }
+                     } catch (error) {
+                         console.error(`AI玩家 ${questionData.targetPlayer} 回答失败:`, error);
+                         this.addPlayerMessage(
+                             questionData.targetPlayer, 
+                             `[${questionData.targetPlayer}无法回答这个问题]`, 
+                             'response'
+                         );
+                     }
+                 }, (i + 1) * this.config.aiResponseDelay * 1000); // 间隔回答
+             }
+         }
+     }
+     
+     // ================== 回复状态监控 ==================
+     
+     initializeAnswerStatus(queries) {
+         // 初始化回复状态跟踪
+         this.gameState.answerStatus = {
+             needToAnswer: new Set(),
+             hasAnswered: new Set(),
+             allCompleted: false
+         };
+         
+         // 收集所有需要回复的玩家
+         if (queries) {
+             Object.keys(queries).forEach(playerName => {
+                 this.gameState.answerStatus.needToAnswer.add(playerName);
+             });
+         }
+         
+         // 从历史记录中查找所有被询问的玩家
+         if (this.gameState && this.gameState.action_history) {
+             const currentCycle = this.gameState.currentCycle;
+             const currentChapter = this.gameState.currentChapter;
+             
+             for (const action of this.gameState.action_history) {
+                 if (action.type === 'player_action' && 
+                     action.cycle === currentCycle && 
+                     action.chapter === currentChapter &&
+                     action.queries) {
+                     
+                     Object.keys(action.queries).forEach(playerName => {
+                         this.gameState.answerStatus.needToAnswer.add(playerName);
+                     });
+                 }
+             }
+         }
+         
+         console.log('需要回复的玩家:', Array.from(this.gameState.answerStatus.needToAnswer));
+     }
+     
+     startAnswerStatusMonitor() {
+         // 监控回复状态
+         this.answerStatusChecker = setInterval(async () => {
+             if (this.gameState.currentPhase !== 'player_answer') {
+                 this.stopAnswerStatusMonitor();
+                 return;
+             }
+             
+             await this.checkAnswerCompletion();
+         }, 2000); // 每2秒检查一次
+     }
+     
+     stopAnswerStatusMonitor() {
+         if (this.answerStatusChecker) {
+             clearInterval(this.answerStatusChecker);
+             this.answerStatusChecker = null;
+         }
+     }
+     
+     async checkAnswerCompletion() {
+         if (!this.gameState.answerStatus || this.gameState.answerStatus.allCompleted) {
+             return;
+         }
+         
+         // 检查是否所有需要回复的人都已经回复
+         const needToAnswer = this.gameState.answerStatus.needToAnswer;
+         const hasAnswered = this.gameState.answerStatus.hasAnswered;
+         
+         // 检查历史记录中的回复
+         if (this.gameState.action_history) {
+             const currentCycle = this.gameState.currentCycle;
+             const currentChapter = this.gameState.currentChapter;
+             
+             for (const action of this.gameState.action_history) {
+                 if (action.type === 'answer' && 
+                     action.cycle === currentCycle && 
+                     action.chapter === currentChapter &&
+                     action.character) {
+                     
+                     hasAnswered.add(action.character);
+                 }
+             }
+         }
+         
+         // 检查是否所有人都完成回复
+         let allAnswered = true;
+         for (const playerName of needToAnswer) {
+             if (!hasAnswered.has(playerName)) {
+                 allAnswered = false;
+                 break;
+             }
+         }
+         
+         if (allAnswered) {
+             this.gameState.answerStatus.allCompleted = true;
+             this.handleAllAnswersComplete();
+         }
+     }
+     
+     handleAllAnswersComplete() {
+         // 所有回复完成，提前进入下一阶段
+         this.addSystemMessage('📋 所有回复完成，进入下一轮');
+         this.stopPhaseTimer();
+         this.stopAnswerStatusMonitor();
+         
+         setTimeout(() => {
+             this.endAnswerPhase();
+         }, 1500);
+     }
     
     endAnswerPhase() {
         this.stopPhaseTimer();
+        this.stopAnswerStatusMonitor(); // 确保停止回复状态监控
         
         // 检查是否完成当前章节的所有循环
         if (this.gameState.currentCycle >= this.config.chapterCycles) {
             this.startDMSummaryPhase();
         } else {
-            // 进入下一循环
+            // 进入下一循环 - 这是轮次更换，需要提示
             this.gameState.currentCycle++;
             this.updateGameStatusDisplay();
+            this.addSystemMessage(`🔄 第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮`);
             this.startDMSpeakPhase();
         }
     }
     
-    startDMSummaryPhase() {
+    async startDMSummaryPhase() {
         this.gameState.currentPhase = 'dm_summary';
-        this.updatePhaseDisplay('📋 DM总结阶段', 'DM正在总结本章节内容...');
+        
+        // 判断是否是最后一章
+        const isLastChapter = this.gameState.currentChapter >= 3; // 假设共3章
+        
+        if (isLastChapter) {
+            this.updatePhaseDisplay('🎉 游戏最终总结', 'DM正在揭示完整真相...');
+            this.addSystemMessage('🎉 最终总结');
+        } else {
+            this.updatePhaseDisplay('📋 DM章节总结', 'DM正在总结本章节内容...');
+            this.addSystemMessage(`📋 第${this.gameState.currentChapter}章总结`);
+        }
+        
         this.disableInput('DM正在总结，请等待...');
         
         // 模拟DM总结
-        setTimeout(() => {
-            this.addDMMessage('游戏主持', `第${this.gameState.currentChapter}章总结：根据大家的讨论，现在公布新的线索...`);
+        setTimeout(async () => {
+            if (isLastChapter) {
+                // 最后一章 - 游戏结束总结
+                await this.generateGameEndSummary();
+            } else {
+                // 章节总结
+                await this.generateChapterSummary();
+            }
             
             // 总结完成后进入下一章节或结束游戏
             setTimeout(() => {
-                if (this.gameState.currentChapter >= 3) { // 假设共3章
+                if (isLastChapter) {
                     this.endGame();
                 } else {
                     this.startChapter(this.gameState.currentChapter + 1);
@@ -579,6 +828,83 @@ class GameFlowController {
             }, 5000);
             
         }, 2000);
+    }
+    
+    async generateChapterSummary() {
+        // 生成章节总结
+        try {
+            const response = await fetch('/api/game/dm_speak', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_session: this.gameState.gameSession,
+                    chapter: this.gameState.currentChapter,
+                    speak_type: 'chapter_end',
+                    chat_history: this.getRecentChatHistory()
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                this.addDMMessage('游戏主持', data.data.speech);
+            } else {
+                // 回退方案
+                const cluesContent = await this.getChapterClues(this.gameState.currentChapter);
+                let summaryContent = `第${this.gameState.currentChapter}章总结：根据大家的讨论，现在公布新的线索：\n\n`;
+                summaryContent += cluesContent;
+                this.addDMMessage('游戏主持', summaryContent);
+            }
+        } catch (error) {
+            console.error('生成章节总结失败:', error);
+            // 回退方案
+            const cluesContent = await this.getChapterClues(this.gameState.currentChapter);
+            let summaryContent = `第${this.gameState.currentChapter}章总结：根据大家的讨论，现在公布新的线索：\n\n`;
+            summaryContent += cluesContent;
+            this.addDMMessage('游戏主持', summaryContent);
+        }
+    }
+    
+    async generateGameEndSummary() {
+        // 生成游戏结束总结
+        try {
+            const response = await fetch('/api/game/dm_speak', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_session: this.gameState.gameSession,
+                    chapter: this.gameState.currentChapter,
+                    speak_type: 'game_end',
+                    chat_history: this.getAllChatHistory(),
+                    killer: '凶手身份待确认',
+                    truth_info: '最终真相待揭示'
+                })
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                this.addDMMessage('游戏主持', data.data.speech);
+            } else {
+                // 回退方案
+                const finalSummary = `🎉 游戏结束！\n\n感谢各位玩家的精彩表现！让我们回顾这场惊心动魄的推理之旅...\n\n经过三章的激烈讨论和缜密推理，真相已经浮出水面。每位玩家都展现了出色的观察力和逻辑思维能力。\n\n这个剧本杀游戏到此圆满结束，希望大家都享受了这次推理的乐趣！`;
+                this.addDMMessage('游戏主持', finalSummary);
+            }
+        } catch (error) {
+            console.error('生成游戏结束总结失败:', error);
+            // 回退方案
+            const finalSummary = `🎉 游戏结束！\n\n感谢各位玩家的精彩表现！让我们回顾这场惊心动魄的推理之旅...\n\n经过三章的激烈讨论和缜密推理，真相已经浮出水面。每位玩家都展现了出色的观察力和逻辑思维能力。\n\n这个剧本杀游戏到此圆满结束，希望大家都享受了这次推理的乐趣！`;
+            this.addDMMessage('游戏主持', finalSummary);
+        }
+    }
+    
+    getRecentChatHistory() {
+        // 获取最近的聊天记录
+        const recentMessages = this.messageHistory.slice(-20);
+        return recentMessages.map(msg => `**${msg.speaker}**: ${msg.content}`).join('\n');
+    }
+    
+    getAllChatHistory() {
+        // 获取所有聊天记录
+        return this.messageHistory.map(msg => `**${msg.speaker}**: ${msg.content}`).join('\n');
     }
     
     // ================== 输入控制管理 ==================
@@ -591,19 +917,41 @@ class GameFlowController {
     enableInput() {
         const inputArea = document.getElementById('inputArea');
         const phaseDisabled = document.getElementById('phaseDisabled');
+        const contentInput = document.getElementById('contentInput');
+        const sendBtn = document.getElementById('sendBtn');
         
         inputArea.style.display = 'block';
         phaseDisabled.style.display = 'none';
+        
+        // 启用输入框和发送按钮
+        if (contentInput) {
+            contentInput.disabled = false;
+        }
+        if (sendBtn) {
+            sendBtn.disabled = false;
+        }
     }
     
     disableInput(message) {
         const inputArea = document.getElementById('inputArea');
         const phaseDisabled = document.getElementById('phaseDisabled');
         const disabledText = document.getElementById('disabledText');
+        const contentInput = document.getElementById('contentInput');
+        const sendBtn = document.getElementById('sendBtn');
         
-        inputArea.style.display = 'none';
+        // 保持输入区域可见，但显示禁用消息
+        inputArea.style.display = 'block';
         phaseDisabled.style.display = 'flex';
         disabledText.textContent = message;
+        
+        // 禁用输入框和发送按钮
+        if (contentInput) {
+            contentInput.disabled = true;
+            contentInput.placeholder = message;
+        }
+        if (sendBtn) {
+            sendBtn.disabled = true;
+        }
     }
     
     setupQueryList() {
@@ -690,33 +1038,39 @@ class GameFlowController {
     
     // ================== 消息发送管理 ==================
     
-    prepareSendMessage() {
-        // 收集发言内容
-        const content = document.getElementById('contentInput').value.trim();
-        
-        // 收集询问内容
-        const queries = {};
-        document.querySelectorAll('#queryList input').forEach(input => {
-            const character = input.dataset.character;
-            const question = input.value.trim();
-            if (question) {
-                queries[character] = question;
-            }
-        });
-        
-        // 验证内容
-        if (!content && Object.keys(queries).length === 0) {
-            this.showToast('请输入发言内容或询问问题', 'warning');
-            return;
-        }
-        
-        // 存储待发送内容
-        this.gameState.pendingContent = content || '[保持沉默]';
-        this.gameState.pendingQueries = queries;
-        
-        // 显示确认模态框
-        this.showSendConfirmModal();
-    }
+         prepareSendMessage() {
+         // 如果是回答阶段，直接发送回答
+         if (this.gameState.currentPhase === 'player_answer') {
+             this.sendPlayerAnswer();
+             return;
+         }
+         
+         // 收集发言内容
+         const content = document.getElementById('contentInput').value.trim();
+         
+         // 收集询问内容
+         const queries = {};
+         document.querySelectorAll('#queryList input').forEach(input => {
+             const character = input.dataset.character;
+             const question = input.value.trim();
+             if (question) {
+                 queries[character] = question;
+             }
+         });
+         
+         // 验证内容
+         if (!content && Object.keys(queries).length === 0) {
+             this.showToast('请输入发言内容或询问问题', 'warning');
+             return;
+         }
+         
+         // 存储待发送内容
+         this.gameState.pendingContent = content || '[保持沉默]';
+         this.gameState.pendingQueries = queries;
+         
+         // 显示确认模态框
+         this.showSendConfirmModal();
+     }
     
     showSendConfirmModal() {
         const modal = document.getElementById('sendConfirmModal');
@@ -792,14 +1146,14 @@ class GameFlowController {
                 // 停止计时器，进入回答阶段
                 this.stopPhaseTimer();
                 this.startPlayerAnswerPhase(this.gameState.pendingQueries);
-            } else {
-                this.addSystemMessage('❌ 发送失败：' + data.message);
-            }
-            
-        } catch (error) {
-            console.error('发送消息失败:', error);
-            this.addSystemMessage('❌ 网络错误，请检查连接后重试。');
-        }
+                         } else {
+                 this.addSystemMessage('❌ 发送失败');
+             }
+             
+         } catch (error) {
+             console.error('发送消息失败:', error);
+             this.addSystemMessage('❌ 网络错误');
+         }
         
         // 清空待发送内容
         this.gameState.pendingContent = '';
@@ -1075,11 +1429,11 @@ class GameFlowController {
                         progress = 100;
                         this.updateProgress(progress, '游戏准备完成！');
                         
-                        setTimeout(() => {
-                            this.hideProgressModal();
-                            this.showCharacterSelection(gameData.characters);
-                            this.addSystemMessage('✅ 剧本和图片生成完成！请选择您要扮演的角色。');
-                        }, 1000);
+                                                 setTimeout(() => {
+                             this.hideProgressModal();
+                             this.showCharacterSelection(gameData.characters);
+                             this.addSystemMessage('✅ 生成完成，请选择角色');
+                         }, 1000);
                         
                         clearInterval(this.progressChecker);
                         this.progressChecker = null;
@@ -1165,14 +1519,314 @@ class GameFlowController {
         this.showToast('设置功能开发中...', 'info');
     }
     
-    endGame() {
-        this.addSystemMessage('🎉 游戏结束！感谢您的参与。');
-        this.disableInput('游戏已结束');
-        this.stopPhaseTimer();
-        
-        // 清理游戏状态
-        localStorage.removeItem('currentGameSession');
-    }
+         endGame() {
+         this.addSystemMessage('🎉 游戏结束！感谢您的参与。');
+         this.disableInput('游戏已结束');
+         this.stopPhaseTimer();
+         this.stopSpeakingStatusMonitor();
+         
+         // 清理游戏状态
+         localStorage.removeItem('currentGameSession');
+     }
+     
+     // ================== AI发言和状态管理 ==================
+     
+     initializeSpeakingStatus() {
+         // 初始化发言状态跟踪
+         this.gameState.speakingStatus = {
+             totalPlayers: this.gameState.characters.length,
+             spokenPlayers: new Set(),
+             allCompleted: false
+         };
+     }
+     
+     async triggerAISpeaking() {
+         try {
+             // 移除AI开始发言的提示
+             
+             const response = await fetch('/api/game/trigger_all_ai_speak', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                     game_session: this.gameState.gameSession,
+                     chapter: this.gameState.currentChapter
+                 })
+             });
+             
+             const data = await response.json();
+             if (data.status === 'success') {
+                 const aiActions = data.data.ai_actions;
+                 
+                 // 延迟显示AI发言，模拟思考时间
+                 for (let i = 0; i < aiActions.length; i++) {
+                     const action = aiActions[i];
+                     
+                     setTimeout(() => {
+                         if (action.success) {
+                             // 显示AI发言
+                             this.addPlayerMessage(action.character_name, action.content, 'speak');
+                             
+                             // 显示AI询问
+                             Object.entries(action.queries).forEach(([target, question]) => {
+                                 this.addPlayerMessage(
+                                     action.character_name,
+                                     `询问 ${target}: ${question}`,
+                                     'query'
+                                 );
+                             });
+                             
+                             // 更新发言状态
+                             this.gameState.speakingStatus.spokenPlayers.add(action.character_name);
+                         } else {
+                             this.addPlayerMessage(action.character_name, action.content, 'speak');
+                         }
+                         
+                         // 移除AI发言完毕的提示
+                     }, (i + 1) * 3000); // 每个AI间隔3秒发言
+                 }
+             } else {
+                 this.addSystemMessage('❌ AI发言失败：' + data.message);
+             }
+         } catch (error) {
+             console.error('触发AI发言失败:', error);
+             this.addSystemMessage('❌ AI发言错误');
+         }
+     }
+     
+     startSpeakingStatusMonitor() {
+         // 监控发言状态
+         this.speakingStatusChecker = setInterval(async () => {
+             try {
+                 const response = await fetch(`/api/game/speaking_status/${this.gameState.gameSession}`);
+                 const data = await response.json();
+                 
+                 if (data.status === 'success') {
+                     const status = data.data;
+                     
+                     // 更新进度显示
+                     this.updateSpeakingProgress(status);
+                     
+                     // 检查是否所有玩家都发言完毕
+                     if (status.all_completed && !this.gameState.speakingStatus.allCompleted) {
+                         this.gameState.speakingStatus.allCompleted = true;
+                         this.handleAllPlayersSpokeComplete();
+                     }
+                 }
+             } catch (error) {
+                 console.error('监控发言状态失败:', error);
+             }
+         }, 3000); // 每3秒检查一次
+     }
+     
+     stopSpeakingStatusMonitor() {
+         if (this.speakingStatusChecker) {
+             clearInterval(this.speakingStatusChecker);
+             this.speakingStatusChecker = null;
+         }
+     }
+     
+     updateSpeakingProgress(status) {
+         // 更新发言进度显示
+         const progressText = `发言进度: ${status.spoken_count}/${status.total_players} (${Math.round(status.completion_rate)}%)`;
+         
+         // 更新UI显示（可以添加到状态栏或其他地方）
+         const phaseText = document.getElementById('phaseText');
+         if (phaseText) {
+             phaseText.textContent = `${progressText} - 你可以发言并询问其他玩家`;
+         }
+     }
+     
+     handleAllPlayersSpokeComplete() {
+         // 所有玩家发言完毕，提前进入下一阶段（只在轮次转换时提示）
+         this.addSystemMessage('📋 进入回答阶段');
+         this.stopPhaseTimer();
+         this.stopSpeakingStatusMonitor();
+         
+         // 收集所有询问
+         const allQueries = {};
+         if (this.gameState && this.gameState.pendingQueries) {
+             Object.assign(allQueries, this.gameState.pendingQueries);
+         }
+         
+         setTimeout(() => {
+             this.startPlayerAnswerPhase(allQueries);
+         }, 2000);
+     }
+     
+     async getChapterClues(chapter) {
+         try {
+             const response = await fetch(`/api/game/clues/${this.gameState.gameSession}/${chapter}`);
+             const data = await response.json();
+             
+             if (data.status === 'success') {
+                 const clues = data.data.clues;
+                 
+                 // 格式化线索为markdown
+                 let cluesMarkdown = '### 🔍 新发现的线索：\n\n';
+                 clues.forEach((clue, index) => {
+                     cluesMarkdown += `${index + 1}. **${clue}**\n\n`;
+                 });
+                 
+                 return cluesMarkdown;
+             } else {
+                 return '### 🔍 线索分析：\n\n当前没有新的线索公布，请继续观察和推理...';
+             }
+         } catch (error) {
+             console.error('获取章节线索失败:', error);
+             return '### 🔍 线索分析：\n\n线索获取失败，请继续根据已知信息推理...';
+         }
+     }
+     
+     updateConfigUI() {
+         // 更新配置界面显示
+         try {
+             if (this.gameState.config) {
+                 const scriptSourceRadios = document.querySelectorAll('input[name="scriptSource"]');
+                 scriptSourceRadios.forEach(radio => {
+                     if (radio.value === this.gameState.config.scriptSource) {
+                         radio.checked = true;
+                     }
+                 });
+                 
+                 const localScriptPathInput = document.getElementById('localScriptPath');
+                 if (localScriptPathInput) {
+                     localScriptPathInput.value = this.gameState.config.localScriptPath || '';
+                 }
+                 
+                 const generateImagesCheckbox = document.getElementById('generateImages');
+                 if (generateImagesCheckbox) {
+                     generateImagesCheckbox.checked = this.gameState.config.generateImages;
+                 }
+                 
+                 // 显示/隐藏本地路径输入框
+                 const localPathGroup = document.getElementById('localPathGroup');
+                 if (localPathGroup) {
+                     localPathGroup.style.display = this.gameState.config.scriptSource === 'local' ? 'block' : 'none';
+                 }
+                 
+                 console.log('配置界面已更新:', this.gameState.config);
+             }
+         } catch (error) {
+             console.error('更新配置界面失败:', error);
+         }
+     }
+     
+     checkIfUserNeedsToAnswer(queries) {
+         // 检查人类玩家是否被询问
+         if (!this.gameState.currentCharacter) return false;
+         
+         // 检查直接传入的queries
+         if (queries && queries[this.gameState.currentCharacter]) {
+             return true;
+         }
+         
+         // 检查最近的聊天历史中是否有针对当前用户的询问
+         if (this.gameState.action_history) {
+             const currentCycle = this.gameState.currentCycle;
+             const currentChapter = this.gameState.currentChapter;
+             
+             for (const action of this.gameState.action_history.slice(-10)) {
+                 if (action.type === 'player_action' && 
+                     action.cycle === currentCycle && 
+                     action.chapter === currentChapter &&
+                     action.queries) {
+                     
+                     if (action.queries[this.gameState.currentCharacter]) {
+                         return true;
+                     }
+                 }
+             }
+         }
+         
+         return false;
+     }
+     
+     enableAnswerInput() {
+         // 启用回答输入
+         const inputArea = document.getElementById('inputArea');
+         const phaseDisabled = document.getElementById('phaseDisabled');
+         const contentInput = document.getElementById('contentInput');
+         const sendBtn = document.getElementById('sendBtn');
+         
+         inputArea.style.display = 'block';
+         phaseDisabled.style.display = 'none';
+         
+         // 启用输入框和发送按钮
+         if (contentInput) {
+             contentInput.disabled = false;
+             contentInput.placeholder = '输入你的回答...';
+         }
+         if (sendBtn) {
+             sendBtn.disabled = false;
+         }
+         
+         // 隐藏询问区域（回答阶段不需要询问）
+         const queryList = document.getElementById('queryList');
+         if (queryList) {
+             queryList.style.display = 'none';
+         }
+         
+         const queryToggleBtn = document.getElementById('queryToggleBtn');
+         if (queryToggleBtn) {
+             queryToggleBtn.style.display = 'none';
+         }
+         
+         // 移除回答提示，界面状态已经足够清晰
+     }
+     
+     async sendPlayerAnswer() {
+         // 发送玩家回答
+         const content = document.getElementById('contentInput').value.trim();
+         
+         if (!content) {
+             this.showToast('请输入回答内容', 'warning');
+             return;
+         }
+         
+         try {
+             // 立即显示用户回答
+             this.addPlayerMessage(
+                 this.gameState.currentCharacter, 
+                 content,
+                 'response'
+             );
+             
+             // 清空输入
+             document.getElementById('contentInput').value = '';
+             this.updateCharCount();
+             
+             // 发送到后端记录
+             const response = await fetch('/api/game/player_action', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                     game_session: this.gameState.gameSession,
+                     character_name: this.gameState.currentCharacter,
+                     content: content,
+                     queries: {},
+                     chapter: this.gameState.currentChapter,
+                     cycle: this.gameState.currentCycle,
+                     action_type: 'answer'
+                 })
+             });
+             
+                         if (response.ok) {
+                // 移除回答成功提示，减少系统消息干扰
+                // 更新回复状态
+                if (this.gameState.answerStatus) {
+                    this.gameState.answerStatus.hasAnswered.add(this.gameState.currentCharacter);
+                }
+                // 禁用输入，等待阶段结束
+                this.disableInput('已回答，等待其他玩家...');
+            } else {
+                this.addSystemMessage('❌ 回答失败');
+            }
+             
+         } catch (error) {
+             console.error('发送回答失败:', error);
+             this.addSystemMessage('❌ 网络错误');
+         }
+     }
 }
 
 // ================== 全局函数 ==================

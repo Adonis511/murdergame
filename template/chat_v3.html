@@ -337,6 +337,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 charCount.style.color = '#888';
             }
         });
+        
+        // 添加Ctrl+Enter快捷键发送功能
+        contentInput.addEventListener('keydown', function(event) {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault(); // 阻止默认的换行行为
+                
+                // 检查发送按钮是否可用
+                const sendBtn = document.getElementById('sendBtn');
+                if (sendBtn && !sendBtn.disabled && sendBtn.style.display !== 'none') {
+                    // 触发发送逻辑，与点击发送按钮效果相同
+                    prepareSendMessage();
+                }
+            }
+        });
     }
 });
 </script>

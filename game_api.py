@@ -104,15 +104,37 @@ def create_new_game():
         character_list = []
         
         for char_name in characters:
-            # 检查是否有角色图片
+            # 检查是否有角色图片 - 改进的匹配逻辑
             char_image = None
-            if generate_images:
+            if generate_images and hasattr(game, 'imgs_dir') and os.path.exists(game.imgs_dir):
                 import glob
-                image_pattern = os.path.join(game.imgs_dir, f"character_{char_name}.*")
-                image_files = glob.glob(image_pattern)
-                if image_files:
-                    # 返回相对路径
-                    char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                
+                # 多种匹配模式
+                image_patterns = [
+                    os.path.join(game.imgs_dir, f"{char_name}.*"),
+                    os.path.join(game.imgs_dir, f"character_{char_name}.*"),
+                    os.path.join(game.imgs_dir, f"{char_name}头像.*"),
+                    os.path.join(game.imgs_dir, f"角色_{char_name}.*")
+                ]
+                
+                for pattern in image_patterns:
+                    image_files = glob.glob(pattern)
+                    # 过滤出图片文件
+                    image_files = [f for f in image_files if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                    if image_files:
+                        char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                        break
+                
+                # 如果还没找到，尝试模糊匹配
+                if not char_image:
+                    for img_file in os.listdir(game.imgs_dir):
+                        if (char_name in img_file and 
+                            img_file.lower().endswith(('.png', '.jpg', '.jpeg')) and
+                            not any(skip_word in img_file.lower() for skip_word in ['线索', 'clue', '证据', '场景'])):
+                            char_image = os.path.relpath(
+                                os.path.join(game.imgs_dir, img_file), '.'
+                            ).replace('\\', '/')
+                            break
             
             character_list.append({
                 'name': char_name,
@@ -243,15 +265,37 @@ def load_existing_game():
         character_list = []
         
         for char_name in characters:
-            # 检查是否有角色图片
+            # 检查是否有角色图片 - 改进的匹配逻辑
             char_image = None
             if hasattr(game, 'imgs_dir') and os.path.exists(game.imgs_dir):
                 import glob
-                image_pattern = os.path.join(game.imgs_dir, f"character_{char_name}.*")
-                image_files = glob.glob(image_pattern)
-                if image_files:
-                    # 返回相对路径
-                    char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                
+                # 多种匹配模式
+                image_patterns = [
+                    os.path.join(game.imgs_dir, f"{char_name}.*"),
+                    os.path.join(game.imgs_dir, f"character_{char_name}.*"),
+                    os.path.join(game.imgs_dir, f"{char_name}头像.*"),
+                    os.path.join(game.imgs_dir, f"角色_{char_name}.*")
+                ]
+                
+                for pattern in image_patterns:
+                    image_files = glob.glob(pattern)
+                    # 过滤出图片文件
+                    image_files = [f for f in image_files if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                    if image_files:
+                        char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                        break
+                
+                # 如果还没找到，尝试模糊匹配
+                if not char_image:
+                    for img_file in os.listdir(game.imgs_dir):
+                        if (char_name in img_file and 
+                            img_file.lower().endswith(('.png', '.jpg', '.jpeg')) and
+                            not any(skip_word in img_file.lower() for skip_word in ['线索', 'clue', '证据', '场景'])):
+                            char_image = os.path.relpath(
+                                os.path.join(game.imgs_dir, img_file), '.'
+                            ).replace('\\', '/')
+                            break
             
             character_list.append({
                 'name': char_name,
@@ -391,12 +435,35 @@ def get_game_progress(session_id):
         if game and session.script_ready:
             for char_name in game.script.get('characters', []):
                 char_image = None
-                if session.images_ready:
+                if session.images_ready and hasattr(game, 'imgs_dir') and os.path.exists(game.imgs_dir):
                     import glob
-                    image_pattern = os.path.join(game.imgs_dir, f"character_{char_name}.*")
-                    image_files = glob.glob(image_pattern)
-                    if image_files:
-                        char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                    
+                    # 多种匹配模式
+                    image_patterns = [
+                        os.path.join(game.imgs_dir, f"{char_name}.*"),
+                        os.path.join(game.imgs_dir, f"character_{char_name}.*"),
+                        os.path.join(game.imgs_dir, f"{char_name}头像.*"),
+                        os.path.join(game.imgs_dir, f"角色_{char_name}.*")
+                    ]
+                    
+                    for pattern in image_patterns:
+                        image_files = glob.glob(pattern)
+                        # 过滤出图片文件
+                        image_files = [f for f in image_files if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                        if image_files:
+                            char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                            break
+                    
+                    # 如果还没找到，尝试模糊匹配
+                    if not char_image:
+                        for img_file in os.listdir(game.imgs_dir):
+                            if (char_name in img_file and 
+                                img_file.lower().endswith(('.png', '.jpg', '.jpeg')) and
+                                not any(skip_word in img_file.lower() for skip_word in ['线索', 'clue', '证据', '场景'])):
+                                char_image = os.path.relpath(
+                                    os.path.join(game.imgs_dir, img_file), '.'
+                                ).replace('\\', '/')
+                                break
                 
                 characters.append({
                     'name': char_name,
@@ -554,14 +621,37 @@ def get_all_characters(session_id):
         character_names = game.script.get('characters', [])
         
         for char_name in character_names:
-            # 检查是否有角色图片
+            # 检查是否有角色图片 - 改进的匹配逻辑
             char_image = None
             if hasattr(game, 'imgs_dir') and os.path.exists(game.imgs_dir):
                 import glob
-                image_pattern = os.path.join(game.imgs_dir, f"character_{char_name}.*")
-                image_files = glob.glob(image_pattern)
-                if image_files:
-                    char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                
+                # 多种匹配模式
+                image_patterns = [
+                    os.path.join(game.imgs_dir, f"{char_name}.*"),
+                    os.path.join(game.imgs_dir, f"character_{char_name}.*"),
+                    os.path.join(game.imgs_dir, f"{char_name}头像.*"),
+                    os.path.join(game.imgs_dir, f"角色_{char_name}.*")
+                ]
+                
+                for pattern in image_patterns:
+                    image_files = glob.glob(pattern)
+                    # 过滤出图片文件
+                    image_files = [f for f in image_files if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                    if image_files:
+                        char_image = os.path.relpath(image_files[0], '.').replace('\\', '/')
+                        break
+                
+                # 如果还没找到，尝试模糊匹配
+                if not char_image:
+                    for img_file in os.listdir(game.imgs_dir):
+                        if (char_name in img_file and 
+                            img_file.lower().endswith(('.png', '.jpg', '.jpeg')) and
+                            not any(skip_word in img_file.lower() for skip_word in ['线索', 'clue', '证据', '场景'])):
+                            char_image = os.path.relpath(
+                                os.path.join(game.imgs_dir, img_file), '.'
+                            ).replace('\\', '/')
+                            break
             
             # 检查角色是否被玩家选择
             player_id = None
@@ -882,6 +972,8 @@ def handle_ai_answer():
             }), 400
         
         # 获取AI玩家实例
+        if not hasattr(session, 'ai_players'):
+            session.ai_players = {}
         if character_name not in session.ai_players:
             from player_agent import PlayerAgent
             session.ai_players[character_name] = PlayerAgent(character_name)
@@ -930,6 +1022,464 @@ def handle_ai_answer():
         return jsonify({
             'status': 'error',
             'message': f'AI回答生成失败: {str(e)}'
+        }), 500
+
+@game_bp.route('/ai_speak', methods=['POST'])
+@login_required
+def handle_ai_speak():
+    """处理AI玩家发言"""
+    try:
+        data = request.get_json()
+        session_id = data.get('game_session')
+        character_name = data.get('character_name')
+        chapter = data.get('chapter', 1)
+        
+        if session_id not in ACTIVE_GAMES:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏会话不存在'
+            }), 404
+        
+        session = ACTIVE_GAMES[session_id]
+        game = session.game_instance
+        
+        if not game:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏实例不存在'
+            }), 400
+        
+        # 获取AI玩家实例
+        if not hasattr(session, 'ai_players'):
+            session.ai_players = {}
+        if character_name not in session.ai_players:
+            from player_agent import PlayerAgent
+            session.ai_players[character_name] = PlayerAgent(character_name)
+        
+        ai_player = session.ai_players[character_name]
+        
+        # 构建聊天历史
+        chat_history = ""
+        if hasattr(session, 'action_history'):
+            for action in session.action_history[-10:]:  # 最近10条记录
+                if action['type'] == 'player_action':
+                    chat_history += f"**{action['character']}**: {action['content']}\n"
+                    for target, query in action.get('queries', {}).items():
+                        chat_history += f"**{action['character']}** 询问 **{target}**: {query}\n"
+        
+        # 获取角色剧本（只到当前章节）
+        character_script = game.script.get(character_name, [])
+        available_scripts = character_script[:chapter]
+        
+        # 调用AI发言
+        speak_result = ai_player.query(
+            scripts=available_scripts,
+            chat_history=chat_history
+        )
+        
+        # 记录AI玩家行动
+        action_log = {
+            'type': 'player_action',
+            'character': character_name,
+            'content': speak_result.get('content', '[保持沉默]'),
+            'queries': speak_result.get('query', {}),
+            'chapter': chapter,
+            'cycle': getattr(session, 'current_cycle', 1),
+            'timestamp': datetime.now().isoformat(),
+            'is_ai': True
+        }
+        
+        # 更新聊天历史
+        if hasattr(session, 'action_history'):
+            session.action_history.append(action_log)
+        else:
+            session.action_history = [action_log]
+        
+        print(f"🤖 AI玩家 {character_name} 发言完成")
+        print(f"💬 发言内容: {speak_result.get('content', '[保持沉默]')}")
+        if speak_result.get('query'):
+            print(f"❓ 询问: {speak_result.get('query')}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'AI发言生成成功',
+            'data': {
+                'character_name': character_name,
+                'content': speak_result.get('content', '[保持沉默]'),
+                'queries': speak_result.get('query', {}),
+                'is_ai': True
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ AI发言生成失败: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': f'AI发言生成失败: {str(e)}'
+        }), 500
+
+@game_bp.route('/trigger_all_ai_speak', methods=['POST'])
+@login_required
+def trigger_all_ai_speak():
+    """触发所有AI玩家发言"""
+    try:
+        data = request.get_json()
+        session_id = data.get('game_session')
+        chapter = data.get('chapter', 1)
+        
+        if session_id not in ACTIVE_GAMES:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏会话不存在'
+            }), 404
+        
+        session = ACTIVE_GAMES[session_id]
+        game = session.game_instance
+        
+        if not game:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏实例不存在'
+            }), 400
+        
+        ai_actions = []
+        
+        # 获取所有AI角色
+        for character_name in game.script.get('characters', []):
+            # 检查是否是AI角色（没有被人类玩家选择）
+            is_ai = True
+            for uid, selected_char in session.players.items():
+                if selected_char == character_name:
+                    is_ai = False
+                    break
+            
+            if is_ai:
+                # 获取AI玩家实例
+                if not hasattr(session, 'ai_players'):
+                    session.ai_players = {}
+                if character_name not in session.ai_players:
+                    from player_agent import PlayerAgent
+                    session.ai_players[character_name] = PlayerAgent(character_name)
+                
+                ai_player = session.ai_players[character_name]
+                
+                # 构建聊天历史
+                chat_history = ""
+                if hasattr(session, 'action_history'):
+                    for action in session.action_history[-10:]:  # 最近10条记录
+                        if action['type'] == 'player_action':
+                            chat_history += f"**{action['character']}**: {action['content']}\n"
+                            for target, query in action.get('queries', {}).items():
+                                chat_history += f"**{action['character']}** 询问 **{target}**: {query}\n"
+                
+                # 获取角色剧本（只到当前章节）
+                character_script = game.script.get(character_name, [])
+                available_scripts = character_script[:chapter]
+                
+                try:
+                    # 调用AI发言
+                    speak_result = ai_player.query(
+                        scripts=available_scripts,
+                        chat_history=chat_history
+                    )
+                    
+                    # 记录AI玩家行动
+                    action_log = {
+                        'type': 'player_action',
+                        'character': character_name,
+                        'content': speak_result.get('content', '[保持沉默]'),
+                        'queries': speak_result.get('query', {}),
+                        'chapter': chapter,
+                        'cycle': getattr(session, 'current_cycle', 1),
+                        'timestamp': datetime.now().isoformat(),
+                        'is_ai': True
+                    }
+                    
+                    # 更新聊天历史
+                    if hasattr(session, 'action_history'):
+                        session.action_history.append(action_log)
+                    else:
+                        session.action_history = [action_log]
+                    
+                    ai_actions.append({
+                        'character_name': character_name,
+                        'content': speak_result.get('content', '[保持沉默]'),
+                        'queries': speak_result.get('query', {}),
+                        'success': True
+                    })
+                    
+                    print(f"🤖 AI玩家 {character_name} 发言完成")
+                    print(f"💬 发言内容: {speak_result.get('content', '[保持沉默]')}")
+                    if speak_result.get('query'):
+                        print(f"❓ 询问: {speak_result.get('query')}")
+                    
+                except Exception as e:
+                    print(f"❌ AI玩家 {character_name} 发言失败: {e}")
+                    ai_actions.append({
+                        'character_name': character_name,
+                        'content': f"[{character_name}思考中...]",
+                        'queries': {},
+                        'success': False,
+                        'error': str(e)
+                    })
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'AI玩家发言完成，共{len(ai_actions)}个AI角色',
+            'data': {
+                'ai_actions': ai_actions,
+                'total_ai': len(ai_actions),
+                'successful': len([a for a in ai_actions if a['success']])
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ 触发AI发言失败: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': f'触发AI发言失败: {str(e)}'
+        }), 500
+
+@game_bp.route('/clues/<session_id>/<int:chapter>', methods=['GET'])
+@login_required
+def get_chapter_clues(session_id, chapter):
+    """获取章节线索"""
+    try:
+        if session_id not in ACTIVE_GAMES:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏会话不存在'
+            }), 404
+        
+        session = ACTIVE_GAMES[session_id]
+        game = session.game_instance
+        
+        if not game:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏实例不存在'
+            }), 400
+        
+        # 获取章节线索
+        clues = []
+        
+        # 尝试从游戏实例中获取线索
+        if hasattr(game, 'clues') and isinstance(game.clues, dict):
+            chapter_clues = game.clues.get(f'chapter_{chapter}', [])
+            clues.extend(chapter_clues)
+        elif hasattr(game, 'script') and isinstance(game.script, dict):
+            # 从剧本中提取线索
+            script_clues = game.script.get('clues', {})
+            if isinstance(script_clues, dict):
+                chapter_clues = script_clues.get(f'chapter_{chapter}', [])
+                clues.extend(chapter_clues)
+        
+        # 如果没有找到线索，生成一些默认线索
+        if not clues:
+            clues = [
+                f"第{chapter}章的关键线索正在分析中...",
+                "请仔细观察每个角色的言行举止",
+                "注意角色之间的关系和矛盾",
+                "时间线索可能是破案的关键"
+            ]
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'chapter': chapter,
+                'clues': clues,
+                'total_clues': len(clues)
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ 获取章节线索失败: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'获取章节线索失败: {str(e)}'
+        }), 500
+
+@game_bp.route('/speaking_status/<session_id>', methods=['GET'])
+@login_required
+def get_speaking_status(session_id):
+    """获取发言状态"""
+    try:
+        if session_id not in ACTIVE_GAMES:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏会话不存在'
+            }), 404
+        
+        session = ACTIVE_GAMES[session_id]
+        game = session.game_instance
+        
+        if not game:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏实例不存在'
+            }), 400
+        
+        # 获取当前循环的发言状态
+        current_cycle = getattr(session, 'current_cycle', 1)
+        spoken_players = set()
+        
+        if hasattr(session, 'action_history'):
+            for action in session.action_history:
+                if (action['type'] == 'player_action' and 
+                    action.get('cycle') == current_cycle and
+                    action.get('chapter') == getattr(session, 'current_chapter', 1)):
+                    spoken_players.add(action['character'])
+        
+        # 获取所有角色
+        all_characters = set(game.script.get('characters', []))
+        
+        # 计算尚未发言的角色
+        remaining_players = all_characters - spoken_players
+        
+        # 计算完成度
+        total_players = len(all_characters)
+        spoken_count = len(spoken_players)
+        completion_rate = (spoken_count / total_players * 100) if total_players > 0 else 0
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'total_players': total_players,
+                'spoken_count': spoken_count,
+                'remaining_count': len(remaining_players),
+                'completion_rate': completion_rate,
+                'spoken_players': list(spoken_players),
+                'remaining_players': list(remaining_players),
+                'all_completed': len(remaining_players) == 0
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ 获取发言状态失败: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'获取发言状态失败: {str(e)}'
+        }), 500
+
+@game_bp.route('/dm_speak', methods=['POST'])
+@login_required
+def handle_dm_speak():
+    """处理DM发言"""
+    try:
+        data = request.get_json()
+        session_id = data.get('game_session')
+        chapter = data.get('chapter', 1)
+        speak_type = data.get('speak_type', 'chapter_start')
+        chat_history = data.get('chat_history', '')
+        
+        # 获取可选参数
+        killer = data.get('killer', '凶手身份待确认')
+        truth_info = data.get('truth_info', '最终真相待揭示')
+        
+        if session_id not in ACTIVE_GAMES:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏会话不存在'
+            }), 404
+        
+        session = ACTIVE_GAMES[session_id]
+        game = session.game_instance
+        
+        if not game:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏实例不存在'
+            }), 400
+        
+        # 获取DM实例
+        if not hasattr(session, 'dm_agent'):
+            from dm_agent import DMAgent
+            session.dm_agent = DMAgent()
+        
+        dm = session.dm_agent
+        
+        # 准备参数
+        dm_script = game.script.get('dm', [])
+        characters = list(game.script.get('characters', []))
+        clues = game.script.get('clues', [])
+        title = game.script.get('title', '剧本杀游戏')
+        
+        # 调用DM speak方法
+        speak_kwargs = {
+            'title': title,
+            'characters': characters,
+            'clues': clues,
+            'base_path': game.base_path if hasattr(game, 'base_path') else '',
+            'chat_history': chat_history
+        }
+        
+        # 根据speak_type添加特定参数
+        if speak_type == 'game_end':
+            speak_kwargs['is_game_end'] = True
+            speak_kwargs['killer'] = killer
+            speak_kwargs['truth_info'] = truth_info
+        elif speak_type == 'chapter_end':
+            speak_kwargs['is_chapter_end'] = True
+        elif speak_type == 'interject':
+            speak_kwargs['is_interject'] = True
+            speak_kwargs['trigger_reason'] = data.get('trigger_reason', '游戏进程需要')
+            speak_kwargs['guidance'] = data.get('guidance', '')
+        
+        # 生成DM发言
+        dm_result = dm.speak(
+            chapter=chapter - 1,  # DM speak 方法使用0开始的章节
+            script=dm_script,
+            **speak_kwargs
+        )
+        
+        if dm_result.get('success', False):
+            # 记录DM发言到历史
+            dm_action = {
+                'type': 'dm_speak',
+                'speak_type': speak_type,
+                'content': dm_result['speech'],
+                'chapter': chapter,
+                'timestamp': datetime.now().isoformat(),
+                'tools': dm_result.get('tools', [])
+            }
+            
+            if hasattr(session, 'action_history'):
+                session.action_history.append(dm_action)
+            else:
+                session.action_history = [dm_action]
+            
+            print(f"🎭 DM {speak_type} 发言生成完成")
+            print(f"💬 发言内容: {dm_result['speech'][:100]}...")
+            if dm_result.get('tools'):
+                print(f"🔧 使用工具: {len(dm_result['tools'])}个")
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'DM发言生成成功',
+                'data': {
+                    'speech': dm_result['speech'],
+                    'tools': dm_result.get('tools', []),
+                    'speak_type': speak_type,
+                    'chapter': chapter
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': f'DM发言生成失败: {dm_result.get("error", "未知错误")}',
+                'data': {
+                    'fallback_speech': f"第{chapter}章 - {speak_type}阶段的内容生成中，请稍等..."
+                }
+            }), 500
+        
+    except Exception as e:
+        print(f"❌ DM发言处理失败: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': f'DM发言处理失败: {str(e)}'
         }), 500
 
 # 错误处理

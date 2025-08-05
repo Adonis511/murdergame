@@ -46,7 +46,7 @@ class PlayerAgent:
             
             # 调用AI生成回复
             completion = self.client.chat.completions.create(
-                model="qwen-plus",
+                model=Config.MODEL,
                 temperature=0.8,  # 稍高的温度让角色更有个性
                 messages=[
                     {"role": "system", "content": self._get_system_prompt()},
@@ -229,7 +229,7 @@ class PlayerAgent:
             
             # 调用AI生成回复
             completion = self.client.chat.completions.create(
-                model="qwen-plus",
+                model=Config.MODEL,
                 temperature=0.7,  # 回应时温度稍低，更加谨慎
                 messages=[
                     {"role": "system", "content": self._get_system_prompt()},

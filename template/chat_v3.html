@@ -32,6 +32,29 @@
             </div>
         </div>
         <div class="game-controls">
+            <!-- 用户信息 -->
+            {% if current_user.is_authenticated %}
+            <div class="user-info">
+                {% if current_user.avatar %}
+                <img src="{{ current_user.avatar }}" alt="头像" class="user-avatar">
+                {% else %}
+                <i class="fas fa-user-circle"></i>
+                {% endif %}
+                <span class="user-name">{{ current_user.nickname }}</span>
+                <a href="{{ url_for('logout') }}" class="logout-btn" title="退出登录">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+            {% else %}
+            <div class="auth-links">
+                <a href="{{ url_for('login') }}" class="auth-link">
+                    <i class="fas fa-sign-in-alt"></i> 登录
+                </a>
+                <a href="{{ url_for('register') }}" class="auth-link">
+                    <i class="fas fa-user-plus"></i> 注册
+                </a>
+            </div>
+            {% endif %}
             <button class="control-btn" id="configBtn" onclick="showGameConfig()">⚙️ 配置</button>
             <button class="control-btn" id="newGameBtn" onclick="startNewGame()">🎭 新游戏</button>
             <button class="control-btn" id="loadGameBtn" onclick="loadExistingGame()">📂 加载游戏</button>

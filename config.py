@@ -17,7 +17,8 @@ class Config:
     
     # OpenAI API配置
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY') or 'sk-fb535aeda39f42d0b8f7039b98699374'
-    OPENAI_MODEL = os.environ.get('AI_MODEL') or 'gpt-3.5-turbo'
+    MODEL = os.environ.get('OPENAI_MODEL') or 'qwen-plus-0806'
+    MODEL_T2I = os.environ.get('MODEL_T2I') or 'wan2.2-t2i-flash'
     OPENAI_MAX_TOKENS = int(os.environ.get('AI_MAX_TOKENS', '1000'))
     OPENAI_TEMPERATURE = float(os.environ.get('AI_TEMPERATURE', '0.7'))
     

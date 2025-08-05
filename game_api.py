@@ -896,6 +896,7 @@ def handle_player_action():
         queries = data.get('queries', {})
         chapter = data.get('chapter', 1)
         cycle = data.get('cycle', 1)
+        action_type = data.get('action_type', 'speak')  # speak 或 answer
         
         if session_id not in ACTIVE_GAMES:
             return jsonify({
@@ -913,6 +914,7 @@ def handle_player_action():
             'queries': queries,
             'chapter': chapter,
             'cycle': cycle,
+            'action_type': action_type,  # 新增：区分发言和回复
             'timestamp': datetime.now().isoformat()
         }
         
@@ -922,8 +924,9 @@ def handle_player_action():
         else:
             session.action_history = [action_log]
         
-        print(f"🎮 玩家 {character_name} 在第{chapter}章第{cycle}轮发言")
-        print(f"💬 发言内容: {content}")
+        action_emoji = "💬" if action_type == "speak" else "💭"
+        print(f"🎮 玩家 {character_name} 在第{chapter}章第{cycle}轮{action_type}")
+        print(f"{action_emoji} 内容: {content}")
         if queries:
             print(f"❓ 询问: {queries}")
         
@@ -1000,6 +1003,25 @@ def handle_ai_answer():
             query=question,
             query_player=asker
         )
+        
+        # 记录AI回复到历史
+        answer_log = {
+            'type': 'answer',
+            'character': character_name,
+            'content': answer,
+            'question': question,
+            'asker': asker,
+            'chapter': chapter,
+            'cycle': getattr(session, 'current_cycle', 1),
+            'action_type': 'answer',  # AI回复标记为answer
+            'timestamp': datetime.now().isoformat(),
+            'is_ai': True
+        }
+        
+        if hasattr(session, 'action_history'):
+            session.action_history.append(answer_log)
+        else:
+            session.action_history = [answer_log]
         
         print(f"🤖 AI玩家 {character_name} 回答了 {asker} 的问题")
         print(f"❓ 问题: {question}")
@@ -1192,6 +1214,7 @@ def trigger_all_ai_speak():
                         'queries': speak_result.get('query', {}),
                         'chapter': chapter,
                         'cycle': getattr(session, 'current_cycle', 1),
+                        'action_type': 'speak',  # AI发言标记为speak
                         'timestamp': datetime.now().isoformat(),
                         'is_ai': True
                     }
@@ -1323,14 +1346,19 @@ def get_speaking_status(session_id):
         
         # 获取当前循环的发言状态
         current_cycle = getattr(session, 'current_cycle', 1)
+        current_chapter = getattr(session, 'current_chapter', 1)
         spoken_players = set()
+        
+        print(f"🔍 检查发言状态: 第{current_chapter}章 第{current_cycle}轮")
         
         if hasattr(session, 'action_history'):
             for action in session.action_history:
                 if (action['type'] == 'player_action' and 
                     action.get('cycle') == current_cycle and
-                    action.get('chapter') == getattr(session, 'current_chapter', 1)):
+                    action.get('chapter') == current_chapter and
+                    action.get('action_type') == 'speak'):  # 只计算发言，不包括回复
                     spoken_players.add(action['character'])
+                    print(f"✅ 已发言: {action['character']} (第{action.get('cycle')}轮)")
         
         # 获取所有角色
         all_characters = set(game.script.get('characters', []))

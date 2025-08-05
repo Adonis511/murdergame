@@ -9,7 +9,7 @@ class AIService:
     def __init__(self):
         """初始化AI服务"""
         self.client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
-        self.model = Config.OPENAI_MODEL
+        self.model = Config.MODEL
         self.max_tokens = Config.OPENAI_MAX_TOKENS
         self.temperature = Config.OPENAI_TEMPERATURE
         

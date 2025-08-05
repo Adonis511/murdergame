@@ -333,7 +333,7 @@ def get_config():
             'code_highlight': True,
             'max_message_length': Config.MAX_MESSAGE_LENGTH,
             'ai_enabled': True,
-            'ai_model': Config.OPENAI_MODEL,
+            'ai_model': Config.MODEL,
             'game_api_enabled': GAME_API_AVAILABLE,
             'GAME_PLAYER_SPEAK_TIME': Config.GAME_PLAYER_SPEAK_TIME,
             'GAME_PLAYER_ANSWER_TIME': Config.GAME_PLAYER_ANSWER_TIME,

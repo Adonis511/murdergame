@@ -24,7 +24,46 @@ class GameFlowController {
         this.init();
     }
     
+    // 通用的fetch请求包装器，添加日志
+    async apiRequest(url, options = {}) {
+        const method = options.method || 'GET';
+        const hasBody = options.body ? JSON.parse(options.body) : null;
+        
+        console.log(`🌐 [${method}] 发起请求: ${url}`);
+        if (hasBody) {
+            console.log(`📤 请求参数:`, hasBody);
+        }
+        
+        try {
+            const response = await fetch(url, options);
+            console.log(`📡 [${response.status}] 响应: ${url}`);
+            
+            const data = await response.json();
+            console.log(`📦 响应数据:`, data);
+            
+            return { response, data };
+        } catch (error) {
+            console.error(`❌ 请求失败: ${url}`, error);
+            throw error;
+        }
+    }
+    
     init() {
+        console.log('🎮 【游戏初始化】剧本杀游戏控制器启动');
+        console.log('📚 【流程说明】游戏流程: 新游戏 → 角色选择 → 章节循环(DM发言 → 玩家发言 → 玩家回答) × 3轮 → DM总结 → 下一章');
+        console.log('🌐 【API接口】前端将调用以下接口:');
+        console.log('   - /api/config (获取游戏配置)');
+        console.log('   - /api/game/new (创建新游戏)');
+        console.log('   - /api/game/join (加入游戏选择角色)');
+        console.log('   - /api/game/chapter/start (开始章节)');
+        console.log('   - /api/game/trigger_all_ai_speak (触发AI发言)');
+        console.log('   - /api/game/speaking_status (监控发言状态)');
+        console.log('   - /api/game/player_action (玩家行动)');
+        console.log('   - /api/game/ai_answer (AI回答)');
+        console.log('   - /api/game/dm_speak (DM发言)');
+        console.log('   - /api/game/characters (获取角色列表)');
+        console.log('   - /api/game/script (获取角色剧本)');
+        console.log('   - /api/game/status (获取游戏状态)');
         this.setupMarkdown();
         this.loadGameConfig();
         this.startGameTimer();
@@ -194,10 +233,12 @@ class GameFlowController {
 
     async createNewGame(generateImages = true) {
         try {
+            console.log('🎭 【新游戏】开始创建新游戏');
+            console.log(`🖼️ 生成图片: ${generateImages}`);
             this.addSystemMessage('🎭 正在生成剧本...');
             this.showProgressModal();
             
-            const response = await fetch('/api/game/new', {
+            const { response, data } = await this.apiRequest('/api/game/new', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -207,7 +248,6 @@ class GameFlowController {
                 })
             });
             
-            const data = await response.json();
             if (data.status === 'success') {
                 this.gameState.gameSession = data.data.game_session;
                 localStorage.setItem('currentGameSession', this.gameState.gameSession);
@@ -296,6 +336,7 @@ class GameFlowController {
     }
     
          selectCharacter(characterName, index) {
+         console.log(`👤 【角色选择】选择角色: ${characterName} (索引: ${index})`);
          document.querySelectorAll('.character-card').forEach(card => {
              card.classList.remove('selected');
          });
@@ -314,17 +355,15 @@ class GameFlowController {
          try {
              // 移除角色选择过程提示
              
-             const response = await fetch('/api/game/join', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({
-                     game_session: this.gameState.gameSession,
-                     character_name: this.gameState.selectedCharacter,
-                     user_id: this.gameState.user.id
-                 })
-             });
-             
-             const data = await response.json();
+                         const { response, data } = await this.apiRequest('/api/game/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_session: this.gameState.gameSession,
+                    character_name: this.gameState.selectedCharacter,
+                    user_id: this.gameState.user.id
+                })
+            });
              if (data.status === 'success') {
                  this.gameState.currentCharacter = this.gameState.selectedCharacter;
                  this.gameState.gameMode = 'playing';
@@ -454,10 +493,16 @@ class GameFlowController {
     
     async startChapter(chapterNum) {
         try {
+            console.log('#'.repeat(80));
+            console.log(`📖 【章节变换】开始第${chapterNum}章`);
+            console.log(`🎯 游戏会话: ${this.gameState.gameSession}`);
+            console.log(`👤 当前角色: ${this.gameState.currentCharacter}`);
+            console.log('#'.repeat(80));
+            
             // 只在章节转换时提示
             this.addSystemMessage(`📖 第${chapterNum}章开始`);
             
-            const response = await fetch('/api/game/chapter/start', {
+            const { response, data } = await this.apiRequest('/api/game/chapter/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -467,7 +512,6 @@ class GameFlowController {
                 })
             });
             
-            const data = await response.json();
             if (data.status === 'success') {
                 this.gameState.currentChapter = chapterNum;
                 this.gameState.currentCycle = 1;
@@ -492,6 +536,11 @@ class GameFlowController {
     // ================== 三阶段流程管理 ==================
     
     startDMSpeakPhase(dmContent = null) {
+        console.log('='.repeat(60));
+        console.log('🎭 【阶段变换】进入 DM发言阶段');
+        console.log(`📊 当前状态: 第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮`);
+        console.log('='.repeat(60));
+        
         this.gameState.currentPhase = 'dm_speak';
         this.updatePhaseDisplay('🎭 DM发言阶段', '请等待游戏主持人讲述剧情...');
         this.disableInput('DM正在发言，请等待...');
@@ -506,6 +555,7 @@ class GameFlowController {
             
             // 发言完成后开始玩家发言阶段
             setTimeout(() => {
+                console.log('🎭 DM发言完成，准备开始玩家发言阶段');
                 this.startPlayerSpeakPhase();
             }, this.config.dmSpeakDelay * 1000);
             
@@ -513,6 +563,12 @@ class GameFlowController {
     }
     
     async startPlayerSpeakPhase() {
+        console.log('='.repeat(60));
+        console.log('💬 【阶段变换】进入 玩家发言阶段');
+        console.log(`📊 当前状态: 第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮`);
+        console.log(`⏰ 阶段时长: ${this.config.playerSpeakTime}秒`);
+        console.log('='.repeat(60));
+        
         this.gameState.currentPhase = 'player_speak';
         this.updatePhaseDisplay('💬 玩家发言阶段', '你可以发言并询问其他玩家');
         this.enableInput();
@@ -522,7 +578,9 @@ class GameFlowController {
         this.initializeSpeakingStatus();
         
         // 触发所有AI玩家发言
+        console.log('⏰ 设置2秒后触发AI发言');
         setTimeout(async () => {
+            console.log('⏰ 2秒计时结束，现在触发AI发言');
             await this.triggerAISpeaking();
         }, 2000); // 2秒后AI玩家开始发言
         
@@ -537,6 +595,13 @@ class GameFlowController {
     }
     
     startPlayerAnswerPhase(queries) {
+        console.log('='.repeat(60));
+        console.log('🗣️ 【阶段变换】进入 玩家回答阶段');
+        console.log(`📊 当前状态: 第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮`);
+        console.log(`⏰ 阶段时长: ${this.config.playerAnswerTime}秒`);
+        console.log('❓ 待回答问题:', queries);
+        console.log('='.repeat(60));
+        
         this.gameState.currentPhase = 'player_answer';
         this.updatePhaseDisplay('🗣️ 玩家回答阶段', '被询问的玩家可以回答问题');
         
@@ -576,58 +641,64 @@ class GameFlowController {
     }
     
          async handleAIPlayerAnswers(queries) {
-         // 收集所有需要AI回答的问题
+         console.log('🤖 【AI回复】开始处理AI回复，传入的询问:', queries);
+         
+         // 收集所有需要AI回答的问题 - 只使用传入的queries，避免重复收集
          const aiQuestions = [];
          
-         // 从当前阶段的所有询问中筛选AI需要回答的问题
-         if (this.gameState && this.gameState.action_history) {
-             // 获取当前循环的所有询问
-             const currentCycle = this.gameState.currentCycle;
-             const currentChapter = this.gameState.currentChapter;
-             
-             if (this.gameState.action_history) {
-                 for (const action of this.gameState.action_history) {
-                     if (action.type === 'player_action' && 
-                         action.cycle === currentCycle && 
-                         action.chapter === currentChapter &&
-                         action.queries) {
-                         
-                         for (const [targetPlayer, question] of Object.entries(action.queries)) {
-                             const targetChar = this.gameState.characters.find(c => c.name === targetPlayer);
-                             if (targetChar && targetChar.is_ai) {
-                                 aiQuestions.push({
-                                     targetPlayer,
-                                     question,
-                                     asker: action.character
-                                 });
+         // 从传入的queries参数中收集AI需要回答的问题
+         for (const [targetPlayer, question] of Object.entries(queries)) {
+             const targetChar = this.gameState.characters.find(c => c.name === targetPlayer);
+             if (targetChar && targetChar.is_ai) {
+                 // 需要找到提问者，从action_history中查找这个问题是谁问的
+                 let asker = this.gameState.currentCharacter; // 默认是当前用户
+                 
+                 if (this.gameState && this.gameState.action_history) {
+                     const currentCycle = this.gameState.currentCycle;
+                     const currentChapter = this.gameState.currentChapter;
+                     
+                     for (const action of this.gameState.action_history) {
+                         if (action.type === 'player_action' && 
+                             action.cycle === currentCycle && 
+                             action.chapter === currentChapter &&
+                             action.action_type === 'speak' &&
+                             action.queries) {
+                             
+                             // 检查这个action中是否包含对targetPlayer的同样问题
+                             if (action.queries[targetPlayer] === question) {
+                                 asker = action.character;
+                                 break;
                              }
                          }
                      }
                  }
-             }
-         }
-         
-         // 如果有传入的queries参数，也加入处理
-         for (const [targetPlayer, question] of Object.entries(queries)) {
-             const targetChar = this.gameState.characters.find(c => c.name === targetPlayer);
-             if (targetChar && targetChar.is_ai) {
+                 
                  aiQuestions.push({
                      targetPlayer,
                      question,
-                     asker: this.gameState.currentCharacter
+                     asker: asker
                  });
+                 console.log(`🎯 【AI回复】添加AI问题: ${asker} 问 ${targetPlayer}: ${question}`);
              }
          }
          
+         console.log(`🤖 【AI回复】需要AI回复的问题数: ${aiQuestions.length}`);
+         
          // 延迟后让AI玩家依次回答
          if (aiQuestions.length > 0) {
-             // 移除AI回答提示，让游戏流程更自然
+             // 初始化AI回复跟踪
+             this.gameState.aiRepliesStatus = {
+                 totalQuestions: aiQuestions.length,
+                 completedReplies: 0,
+                 allCompleted: false
+             };
              
              for (let i = 0; i < aiQuestions.length; i++) {
                  const questionData = aiQuestions[i];
                  
                  setTimeout(async () => {
                      try {
+                         console.log(`🤖 【AI回复】${questionData.targetPlayer} 开始回答问题`);
                          // 调用AI回答API
                          const response = await fetch('/api/game/ai_answer', {
                              method: 'POST',
@@ -648,23 +719,113 @@ class GameFlowController {
                                  `回答 ${questionData.asker} 的问题：${data.data.answer}`, 
                                  'response'
                              );
+                             console.log(`✅ 【AI回复】${questionData.targetPlayer} 回复完成`);
                          } else {
                              this.addPlayerMessage(
                                  questionData.targetPlayer, 
                                  `[${questionData.targetPlayer}选择不回答这个问题]`, 
                                  'response'
                              );
+                             console.log(`⚠️ 【AI回复】${questionData.targetPlayer} 选择不回答`);
                          }
+                         
+                         // 立即更新该AI的回复状态
+                         if (this.gameState.answerStatus) {
+                             this.gameState.answerStatus.hasAnswered.add(questionData.targetPlayer);
+                             console.log(`✅ 【回复状态】标记${questionData.targetPlayer}已回复`);
+                         }
+                         
+                         // 将AI回复记录到前端action_history
+                         const aiAnswerLog = {
+                             type: 'answer',
+                             character: questionData.targetPlayer,
+                             content: data.data.answer,
+                             question: questionData.question,
+                             asker: questionData.asker,
+                             chapter: this.gameState.currentChapter,
+                             cycle: this.gameState.currentCycle,
+                             action_type: 'answer',
+                             timestamp: new Date().toISOString(),
+                             is_ai: true
+                         };
+                         
+                         if (!this.gameState.action_history) {
+                             this.gameState.action_history = [];
+                         }
+                         this.gameState.action_history.push(aiAnswerLog);
+                         console.log(`💾 【AI回复记录】将AI回复保存到前端action_history:`, aiAnswerLog);
+                         
+                         // 更新AI回复完成状态
+                         if (this.gameState.aiRepliesStatus) {
+                             this.gameState.aiRepliesStatus.completedReplies++;
+                             console.log(`📊 【AI回复】进度: ${this.gameState.aiRepliesStatus.completedReplies}/${this.gameState.aiRepliesStatus.totalQuestions}`);
+                             
+                             // 检查是否所有AI都回复完成
+                             if (this.gameState.aiRepliesStatus.completedReplies >= this.gameState.aiRepliesStatus.totalQuestions) {
+                                 this.gameState.aiRepliesStatus.allCompleted = true;
+                                 console.log('🎉 【AI回复】所有AI回复完成');
+                                 // 检查回复完成状态
+                                 setTimeout(() => {
+                                     this.checkAnswerCompletion();
+                                 }, 500);
+                             }
+                         }
+                         
                      } catch (error) {
-                         console.error(`AI玩家 ${questionData.targetPlayer} 回答失败:`, error);
+                         console.error(`❌ 【AI回复】${questionData.targetPlayer} 回答失败:`, error);
                          this.addPlayerMessage(
                              questionData.targetPlayer, 
                              `[${questionData.targetPlayer}无法回答这个问题]`, 
                              'response'
                          );
+                         
+                         // 即使失败也要标记为已回复
+                         if (this.gameState.answerStatus) {
+                             this.gameState.answerStatus.hasAnswered.add(questionData.targetPlayer);
+                             console.log(`⚠️ 【回复状态】标记${questionData.targetPlayer}已回复（失败）`);
+                         }
+                         
+                         // 将失败的AI回复也记录到前端action_history
+                         const aiAnswerLog = {
+                             type: 'answer',
+                             character: questionData.targetPlayer,
+                             content: `[${questionData.targetPlayer}无法回答这个问题]`,
+                             question: questionData.question,
+                             asker: questionData.asker,
+                             chapter: this.gameState.currentChapter,
+                             cycle: this.gameState.currentCycle,
+                             action_type: 'answer',
+                             timestamp: new Date().toISOString(),
+                             is_ai: true
+                         };
+                         
+                         if (!this.gameState.action_history) {
+                             this.gameState.action_history = [];
+                         }
+                         this.gameState.action_history.push(aiAnswerLog);
+                         console.log(`💾 【AI回复记录】将失败AI回复保存到前端action_history:`, aiAnswerLog);
+                         
+                         // 即使失败也要更新完成状态
+                         if (this.gameState.aiRepliesStatus) {
+                             this.gameState.aiRepliesStatus.completedReplies++;
+                             if (this.gameState.aiRepliesStatus.completedReplies >= this.gameState.aiRepliesStatus.totalQuestions) {
+                                 this.gameState.aiRepliesStatus.allCompleted = true;
+                                 console.log('🎉 【AI回复】所有AI回复完成（含失败）');
+                                 // 检查回复完成状态
+                                 setTimeout(() => {
+                                     this.checkAnswerCompletion();
+                                 }, 500);
+                             }
+                         }
                      }
                  }, (i + 1) * this.config.aiResponseDelay * 1000); // 间隔回答
              }
+         } else {
+             console.log('📝 【AI回复】无需AI回复');
+             // 如果没有AI需要回复，直接标记回复状态完成
+             setTimeout(() => {
+                 this.checkAnswerCompletion();
+             }, 1000);
          }
      }
      
@@ -730,9 +891,14 @@ class GameFlowController {
              return;
          }
          
+         console.log('🔍 【回复检测】检查回复完成状态');
+         
          // 检查是否所有需要回复的人都已经回复
          const needToAnswer = this.gameState.answerStatus.needToAnswer;
          const hasAnswered = this.gameState.answerStatus.hasAnswered;
+         
+         console.log(`📝 【回复检测】需要回复: [${Array.from(needToAnswer).join(', ')}]`);
+         console.log(`✅ 【回复检测】已回复: [${Array.from(hasAnswered).join(', ')}]`);
          
          // 检查历史记录中的回复
          if (this.gameState.action_history) {
@@ -746,22 +912,39 @@ class GameFlowController {
                      action.character) {
                      
                      hasAnswered.add(action.character);
+                     console.log(`📋 【回复检测】从历史记录发现回复: ${action.character}`);
                  }
              }
          }
          
+         // 检查AI回复是否完成
+         let aiRepliesCompleted = true;
+         if (this.gameState.aiRepliesStatus && !this.gameState.aiRepliesStatus.allCompleted) {
+             aiRepliesCompleted = false;
+             console.log(`⏳ 【回复检测】AI回复尚未完成: ${this.gameState.aiRepliesStatus.completedReplies}/${this.gameState.aiRepliesStatus.totalQuestions}`);
+         }
+         
          // 检查是否所有人都完成回复
          let allAnswered = true;
+         const missingAnswers = [];
          for (const playerName of needToAnswer) {
              if (!hasAnswered.has(playerName)) {
                  allAnswered = false;
-                 break;
+                 missingAnswers.push(playerName);
              }
          }
          
-         if (allAnswered) {
+         if (missingAnswers.length > 0) {
+             console.log(`⏳ 【回复检测】等待回复: [${missingAnswers.join(', ')}]`);
+         }
+         
+         // 只有当所有人类和AI都回复完成时才进入下一阶段
+         if (allAnswered && aiRepliesCompleted) {
+             console.log('🎉 【回复检测】所有回复完成，准备进入下一阶段');
              this.gameState.answerStatus.allCompleted = true;
              this.handleAllAnswersComplete();
+         } else {
+             console.log('⏳ 【回复检测】回复尚未完成，继续等待');
          }
      }
      
@@ -782,10 +965,12 @@ class GameFlowController {
         
         // 检查是否完成当前章节的所有循环
         if (this.gameState.currentCycle >= this.config.chapterCycles) {
+            console.log('📋 【循环控制】当前章节所有循环完成，开始DM总结');
             this.startDMSummaryPhase();
         } else {
             // 进入下一循环 - 这是轮次更换，需要提示
             this.gameState.currentCycle++;
+            console.log(`🔄 【循环控制】进入第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮 (${this.gameState.currentCycle}/${this.config.chapterCycles})`);
             this.updateGameStatusDisplay();
             this.addSystemMessage(`🔄 第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮`);
             this.startDMSpeakPhase();
@@ -793,15 +978,22 @@ class GameFlowController {
     }
     
     async startDMSummaryPhase() {
+        console.log('='.repeat(60));
+        console.log('📋 【阶段变换】进入 DM总结阶段');
+        console.log(`📊 当前状态: 第${this.gameState.currentChapter}章`);
+        console.log('='.repeat(60));
+        
         this.gameState.currentPhase = 'dm_summary';
         
         // 判断是否是最后一章
         const isLastChapter = this.gameState.currentChapter >= 3; // 假设共3章
         
         if (isLastChapter) {
+            console.log('🎉 【游戏结束】这是最后一章，开始最终总结');
             this.updatePhaseDisplay('🎉 游戏最终总结', 'DM正在揭示完整真相...');
             this.addSystemMessage('🎉 最终总结');
         } else {
+            console.log('📋 【章节总结】准备进入下一章');
             this.updatePhaseDisplay('📋 DM章节总结', 'DM正在总结本章节内容...');
             this.addSystemMessage(`📋 第${this.gameState.currentChapter}章总结`);
         }
@@ -1137,18 +1329,41 @@ class GameFlowController {
                     content: this.gameState.pendingContent,
                     queries: this.gameState.pendingQueries,
                     chapter: this.gameState.currentChapter,
-                    cycle: this.gameState.currentCycle
+                    cycle: this.gameState.currentCycle,
+                    action_type: 'speak'  // 明确标记为发言
                 })
             });
             
             const data = await response.json();
             if (data.status === 'success') {
-                // 停止计时器，进入回答阶段
-                this.stopPhaseTimer();
-                this.startPlayerAnswerPhase(this.gameState.pendingQueries);
-                         } else {
-                 this.addSystemMessage('❌ 发送失败');
-             }
+                // 重要：将用户发言记录添加到前端action_history
+                const userActionLog = {
+                    type: 'player_action',
+                    character: this.gameState.currentCharacter,
+                    content: this.gameState.pendingContent,
+                    queries: this.gameState.pendingQueries,
+                    chapter: this.gameState.currentChapter,
+                    cycle: this.gameState.currentCycle,
+                    action_type: 'speak',
+                    timestamp: new Date().toISOString(),
+                    is_ai: false
+                };
+                
+                if (!this.gameState.action_history) {
+                    this.gameState.action_history = [];
+                }
+                this.gameState.action_history.push(userActionLog);
+                console.log(`💾 【用户记录】将用户发言保存到前端action_history:`, userActionLog);
+                
+                // 用户发言完成，但不直接进入回答阶段
+                // 等待所有玩家（包括AI）发言完成后再统一进入回答阶段
+                console.log('✅ 【用户发言】用户发言完成，等待其他玩家完成发言');
+                
+                // 如果所有玩家都已经发言完成，才进入回答阶段
+                // 否则继续等待AI玩家完成发言
+            } else {
+                this.addSystemMessage('❌ 发送失败');
+            }
              
          } catch (error) {
              console.error('发送消息失败:', error);
@@ -1532,59 +1747,92 @@ class GameFlowController {
      // ================== AI发言和状态管理 ==================
      
      initializeSpeakingStatus() {
-         // 初始化发言状态跟踪
+         // 初始化发言状态跟踪 - 每轮重新初始化
+         console.log(`🔄 【发言状态】初始化第${this.gameState.currentChapter}章第${this.gameState.currentCycle}轮发言状态`);
          this.gameState.speakingStatus = {
              totalPlayers: this.gameState.characters.length,
              spokenPlayers: new Set(),
-             allCompleted: false
+             allCompleted: false,
+             currentCycle: this.gameState.currentCycle,
+             currentChapter: this.gameState.currentChapter
          };
+         console.log(`👥 总玩家数: ${this.gameState.speakingStatus.totalPlayers}`);
      }
      
      async triggerAISpeaking() {
          try {
-             // 移除AI开始发言的提示
-             
-             const response = await fetch('/api/game/trigger_all_ai_speak', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({
-                     game_session: this.gameState.gameSession,
-                     chapter: this.gameState.currentChapter
-                 })
+             console.log('🤖 开始触发AI发言...');
+             console.log('📊 游戏状态:', {
+                 gameSession: this.gameState.gameSession,
+                 chapter: this.gameState.currentChapter,
+                 phase: this.gameState.currentPhase
              });
              
-             const data = await response.json();
+                         const { response, data } = await this.apiRequest('/api/game/trigger_all_ai_speak', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_session: this.gameState.gameSession,
+                    chapter: this.gameState.currentChapter
+                })
+            });
+             
              if (data.status === 'success') {
                  const aiActions = data.data.ai_actions;
+                 console.log(`🎯 获取到 ${aiActions.length} 个AI玩家的发言`);
                  
                  // 延迟显示AI发言，模拟思考时间
                  for (let i = 0; i < aiActions.length; i++) {
                      const action = aiActions[i];
+                     console.log(`⏰ 安排AI玩家 ${action.character_name} 在 ${(i + 1) * 3} 秒后发言`);
                      
                      setTimeout(() => {
-                         if (action.success) {
-                             // 显示AI发言
-                             this.addPlayerMessage(action.character_name, action.content, 'speak');
-                             
-                             // 显示AI询问
-                             Object.entries(action.queries).forEach(([target, question]) => {
-                                 this.addPlayerMessage(
-                                     action.character_name,
-                                     `询问 ${target}: ${question}`,
-                                     'query'
-                                 );
-                             });
-                             
-                             // 更新发言状态
-                             this.gameState.speakingStatus.spokenPlayers.add(action.character_name);
-                         } else {
-                             this.addPlayerMessage(action.character_name, action.content, 'speak');
-                         }
-                         
-                         // 移除AI发言完毕的提示
+                         console.log(`💬 AI玩家 ${action.character_name} 开始发言:`, action);
+                                                 if (action.success) {
+                            // 显示AI发言
+                            this.addPlayerMessage(action.character_name, action.content, 'speak');
+                            console.log(`✅ 显示AI发言: ${action.character_name} - ${action.content}`);
+                            
+                            // 显示AI询问
+                            Object.entries(action.queries).forEach(([target, question]) => {
+                                this.addPlayerMessage(
+                                    action.character_name,
+                                    `询问 ${target}: ${question}`,
+                                    'query'
+                                );
+                                console.log(`❓ 显示AI询问: ${action.character_name} -> ${target}: ${question}`);
+                            });
+                            
+                            // 重要：将AI发言记录添加到前端action_history
+                            const aiActionLog = {
+                                type: 'player_action',
+                                character: action.character_name,
+                                content: action.content,
+                                queries: action.queries,
+                                chapter: this.gameState.currentChapter,
+                                cycle: this.gameState.currentCycle,
+                                action_type: 'speak',
+                                timestamp: new Date().toISOString(),
+                                is_ai: true
+                            };
+                            
+                            if (!this.gameState.action_history) {
+                                this.gameState.action_history = [];
+                            }
+                            this.gameState.action_history.push(aiActionLog);
+                            console.log(`💾 【AI记录】将AI发言保存到前端action_history:`, aiActionLog);
+                            
+                            // 更新发言状态
+                            this.gameState.speakingStatus.spokenPlayers.add(action.character_name);
+                            console.log(`📝 更新发言状态，已发言玩家:`, this.gameState.speakingStatus.spokenPlayers);
+                        } else {
+                            this.addPlayerMessage(action.character_name, action.content, 'speak');
+                            console.log(`⚠️ AI发言失败: ${action.character_name} - ${action.content}`);
+                        }
                      }, (i + 1) * 3000); // 每个AI间隔3秒发言
                  }
              } else {
+                 console.error('❌ AI发言接口返回错误:', data);
                  this.addSystemMessage('❌ AI发言失败：' + data.message);
              }
          } catch (error) {
@@ -1636,22 +1884,48 @@ class GameFlowController {
          }
      }
      
-     handleAllPlayersSpokeComplete() {
-         // 所有玩家发言完毕，提前进入下一阶段（只在轮次转换时提示）
-         this.addSystemMessage('📋 进入回答阶段');
-         this.stopPhaseTimer();
-         this.stopSpeakingStatusMonitor();
-         
-         // 收集所有询问
-         const allQueries = {};
-         if (this.gameState && this.gameState.pendingQueries) {
-             Object.assign(allQueries, this.gameState.pendingQueries);
-         }
-         
-         setTimeout(() => {
-             this.startPlayerAnswerPhase(allQueries);
-         }, 2000);
-     }
+         handleAllPlayersSpokeComplete() {
+        console.log('📋 【发言完成】所有玩家发言完毕，收集询问');
+        // 所有玩家发言完毕，提前进入下一阶段（只在轮次转换时提示）
+        this.addSystemMessage('📋 进入回答阶段');
+        this.stopPhaseTimer();
+        this.stopSpeakingStatusMonitor();
+        
+        // 收集所有询问 - 从action_history中收集当前轮次的所有询问
+        const allQueries = {};
+        
+        // 首先从pendingQueries收集（用户的询问）
+        if (this.gameState && this.gameState.pendingQueries) {
+            Object.assign(allQueries, this.gameState.pendingQueries);
+            console.log('📝 【询问收集】从pendingQueries收集:', this.gameState.pendingQueries);
+        }
+        
+        // 然后从action_history收集所有玩家的询问
+        if (this.gameState && this.gameState.action_history) {
+            const currentCycle = this.gameState.currentCycle;
+            const currentChapter = this.gameState.currentChapter;
+            
+            for (const action of this.gameState.action_history) {
+                if (action.type === 'player_action' && 
+                    action.cycle === currentCycle && 
+                    action.chapter === currentChapter &&
+                    action.action_type === 'speak' &&  // 只收集发言阶段的询问
+                    action.queries) {
+                    
+                    // 合并这个玩家的所有询问
+                    Object.assign(allQueries, action.queries);
+                    console.log(`📝 【询问收集】从${action.character}收集询问:`, action.queries);
+                }
+            }
+        }
+        
+        console.log('🎯 【询问收集】最终收集到的所有询问:', allQueries);
+        console.log(`❓ 【询问收集】总询问数: ${Object.keys(allQueries).length}`);
+        
+        setTimeout(() => {
+            this.startPlayerAnswerPhase(allQueries);
+        }, 2000);
+    }
      
      async getChapterClues(chapter) {
          try {
@@ -1815,7 +2089,27 @@ class GameFlowController {
                 // 更新回复状态
                 if (this.gameState.answerStatus) {
                     this.gameState.answerStatus.hasAnswered.add(this.gameState.currentCharacter);
+                    console.log(`✅ 【回复状态】标记${this.gameState.currentCharacter}已回复`);
                 }
+                
+                // 将用户回复记录到前端action_history
+                const userAnswerLog = {
+                    type: 'answer',
+                    character: this.gameState.currentCharacter,
+                    content: content,
+                    chapter: this.gameState.currentChapter,
+                    cycle: this.gameState.currentCycle,
+                    action_type: 'answer',
+                    timestamp: new Date().toISOString(),
+                    is_ai: false
+                };
+                
+                if (!this.gameState.action_history) {
+                    this.gameState.action_history = [];
+                }
+                this.gameState.action_history.push(userAnswerLog);
+                console.log(`💾 【用户回复记录】将用户回复保存到前端action_history:`, userAnswerLog);
+                
                 // 禁用输入，等待阶段结束
                 this.disableInput('已回答，等待其他玩家...');
             } else {

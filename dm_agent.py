@@ -33,7 +33,7 @@ class DMAgent:
         print("start generating script")
         start = time.time()
         completion = self.client.chat.completions.create(
-        model="qwen-plus",
+        model=Config.MODEL,
         temperature=0.7,
         messages=[
             {"role": "system", "content": self.system_prompt},
@@ -231,7 +231,7 @@ class DMAgent:
             
             # 生成DM发言
             completion = self.client.chat.completions.create(
-                model="qwen-plus",
+                model=Config.MODEL,
                 temperature=0.8,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -665,7 +665,7 @@ class DMAgent:
         }
         
         data = {
-            "model": "wan2.2-t2i-flash",
+            "model": Config.MODEL_T2I,
             "input": {
                 "prompt": prompt
             },

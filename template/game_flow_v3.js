@@ -64,6 +64,7 @@ class GameFlowController {
         console.log('   - /api/game/characters (获取角色列表)');
         console.log('   - /api/game/script (获取角色剧本)');
         console.log('   - /api/game/status (获取游戏状态)');
+        console.log('   - /api/game/sync_cycle (同步轮次信息)');
         this.setupMarkdown();
         this.loadGameConfig();
         this.startGameTimer();
@@ -515,6 +516,10 @@ class GameFlowController {
             if (data.status === 'success') {
                 this.gameState.currentChapter = chapterNum;
                 this.gameState.currentCycle = 1;
+                
+                // 同步章节和轮次信息到后端
+                await this.syncCycleToBackend();
+                
                 this.updateGameStatusDisplay();
                 
                 // 重新加载剧本（新章节内容）
@@ -612,8 +617,8 @@ class GameFlowController {
         if (this.gameState.answerStatus.needToAnswer.size === 0) {
             // 没有人需要回复，直接进入下一阶段
             this.addSystemMessage('📋 无人需要回复，直接进入下一轮');
-            setTimeout(() => {
-                this.endAnswerPhase();
+            setTimeout(async () => {
+                await this.endAnswerPhase();
             }, 1000);
             return;
         }
@@ -634,9 +639,9 @@ class GameFlowController {
         this.startAnswerStatusMonitor();
         
         // 启动计时器
-        this.startPhaseTimer(this.config.playerAnswerTime, () => {
+        this.startPhaseTimer(this.config.playerAnswerTime, async () => {
             // 时间到进入下一轮或总结
-            this.endAnswerPhase();
+            await this.endAnswerPhase();
         });
     }
     
@@ -954,12 +959,12 @@ class GameFlowController {
          this.stopPhaseTimer();
          this.stopAnswerStatusMonitor();
          
-         setTimeout(() => {
-             this.endAnswerPhase();
-         }, 1500);
+                 setTimeout(async () => {
+            await this.endAnswerPhase();
+        }, 1500);
      }
     
-    endAnswerPhase() {
+    async endAnswerPhase() {
         this.stopPhaseTimer();
         this.stopAnswerStatusMonitor(); // 确保停止回复状态监控
         
@@ -971,9 +976,37 @@ class GameFlowController {
             // 进入下一循环 - 这是轮次更换，需要提示
             this.gameState.currentCycle++;
             console.log(`🔄 【循环控制】进入第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮 (${this.gameState.currentCycle}/${this.config.chapterCycles})`);
+            
+            // 同步轮次信息到后端
+            await this.syncCycleToBackend();
+            
             this.updateGameStatusDisplay();
             this.addSystemMessage(`🔄 第${this.gameState.currentChapter}章 第${this.gameState.currentCycle}轮`);
             this.startDMSpeakPhase();
+        }
+    }
+    
+    async syncCycleToBackend() {
+        try {
+            console.log(`🔄 【轮次同步】同步第${this.gameState.currentChapter}章第${this.gameState.currentCycle}轮到后端`);
+            
+            const { response, data } = await this.apiRequest('/api/game/sync_cycle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_session: this.gameState.gameSession,
+                    chapter: this.gameState.currentChapter,
+                    cycle: this.gameState.currentCycle
+                })
+            });
+            
+            if (data.status === 'success') {
+                console.log(`✅ 【轮次同步】后端轮次同步成功`);
+            } else {
+                console.error(`❌ 【轮次同步】后端轮次同步失败:`, data.message);
+            }
+        } catch (error) {
+            console.error('❌ 【轮次同步】轮次同步请求失败:', error);
         }
     }
     
@@ -1841,30 +1874,44 @@ class GameFlowController {
          }
      }
      
-     startSpeakingStatusMonitor() {
-         // 监控发言状态
-         this.speakingStatusChecker = setInterval(async () => {
-             try {
-                 const response = await fetch(`/api/game/speaking_status/${this.gameState.gameSession}`);
-                 const data = await response.json();
-                 
-                 if (data.status === 'success') {
-                     const status = data.data;
-                     
-                     // 更新进度显示
-                     this.updateSpeakingProgress(status);
-                     
-                     // 检查是否所有玩家都发言完毕
-                     if (status.all_completed && !this.gameState.speakingStatus.allCompleted) {
-                         this.gameState.speakingStatus.allCompleted = true;
-                         this.handleAllPlayersSpokeComplete();
-                     }
-                 }
-             } catch (error) {
-                 console.error('监控发言状态失败:', error);
-             }
-         }, 3000); // 每3秒检查一次
-     }
+         startSpeakingStatusMonitor() {
+        console.log(`📊 【发言监控】开始监控第${this.gameState.currentChapter}章第${this.gameState.currentCycle}轮发言状态`);
+        
+        // 监控发言状态
+        this.speakingStatusChecker = setInterval(async () => {
+            try {
+                console.log(`🔍 【发言监控】检查第${this.gameState.currentChapter}章第${this.gameState.currentCycle}轮发言状态`);
+                const response = await fetch(`/api/game/speaking_status/${this.gameState.gameSession}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const status = data.data;
+                    console.log(`📈 【发言监控】后端返回状态:`, status);
+                    console.log(`📊 【发言监控】已发言: ${status.spoken_count}/${status.total_players}, 完成状态: ${status.all_completed}`);
+                    console.log(`👥 【发言监控】已发言玩家:`, status.spoken_players);
+                    console.log(`⏳ 【发言监控】未发言玩家:`, status.remaining_players);
+                    
+                    // 更新进度显示
+                    this.updateSpeakingProgress(status);
+                    
+                    // 检查是否所有玩家都发言完毕
+                    if (status.all_completed && !this.gameState.speakingStatus.allCompleted) {
+                        console.log('🎉 【发言监控】后端确认所有玩家发言完成，触发阶段切换');
+                        this.gameState.speakingStatus.allCompleted = true;
+                        this.handleAllPlayersSpokeComplete();
+                    } else if (status.all_completed) {
+                        console.log('⚠️ 【发言监控】后端显示完成，但前端已标记完成，跳过');
+                    } else {
+                        console.log(`⏳ 【发言监控】等待发言完成 (${status.spoken_count}/${status.total_players})`);
+                    }
+                } else {
+                    console.error('❌ 【发言监控】后端返回错误:', data);
+                }
+            } catch (error) {
+                console.error('❌ 【发言监控】请求失败:', error);
+            }
+        }, 3000); // 每3秒检查一次
+    }
      
      stopSpeakingStatusMonitor() {
          if (this.speakingStatusChecker) {

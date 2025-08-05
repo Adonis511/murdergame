@@ -1519,6 +1519,47 @@ def not_found(error):
         'code': 404
     }), 404
 
+@game_bp.route('/sync_cycle', methods=['POST'])
+@login_required
+def sync_cycle():
+    """同步轮次信息到后端"""
+    try:
+        data = request.get_json()
+        session_id = data.get('game_session')
+        chapter = data.get('chapter', 1)
+        cycle = data.get('cycle', 1)
+        
+        if session_id not in ACTIVE_GAMES:
+            return jsonify({
+                'status': 'error',
+                'message': '游戏会话不存在'
+            }), 404
+        
+        session = ACTIVE_GAMES[session_id]
+        
+        # 更新后端的轮次信息
+        session.current_chapter = chapter
+        session.current_cycle = cycle
+        
+        print(f"🔄 轮次同步: 第{chapter}章 第{cycle}轮")
+        
+        return jsonify({
+            'status': 'success',
+            'message': '轮次同步成功',
+            'data': {
+                'chapter': chapter,
+                'cycle': cycle
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ 轮次同步失败: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': f'轮次同步失败: {str(e)}'
+        }), 500
+
 @game_bp.errorhandler(500)
 def internal_error(error):
     return jsonify({

@@ -1,29 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}聊天室 - 聊天应用{% endblock %}
+{% block title %}剧本杀游戏大厅 - 推理之夜{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
-<!-- Markdown渲染库 -->
+<link rel="stylesheet" href="{{ url_for('static', filename='murder_mystery_v2.css') }}">
+<!-- 引入必要的库 -->
 <script src="https://cdn.jsdelivr.net/npm/marked@5.1.1/marked.min.js"></script>
-<!-- 代码高亮库 -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 <style>
-    /* 覆盖基础模板的一些样式 */
     body {
-        background: #f5f5f5;
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+        color: #e0e0e0;
+        font-family: 'Georgia', 'Times New Roman', serif;
+        overflow: hidden;
     }
     
-    .chat-container {
-        margin-top: 0;
-        border-radius: 0;
-        box-shadow: none;
-        height: calc(100vh - 70px); /* 减去导航栏高度 */
-    }
-    
+    /* 覆盖导航栏样式 */
     .navbar {
-        position: fixed;
+        background: rgba(0, 0, 0, 0.9) !important;
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid #8B0000;
+        position: fixed !important;
         top: 0;
         left: 0;
         right: 0;
@@ -31,331 +29,434 @@
     }
     
     main {
-        padding-top: 70px; /* 为固定导航栏留出空间 */
-        padding-left: 0;
-        padding-right: 0;
+        padding: 0;
         height: 100vh;
+        padding-top: 70px;
     }
     
-    /* 用户信息栏 */
-    .user-info {
-        background: var(--gradient);
-        color: white;
-        padding: 10px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px solid rgba(255,255,255,0.2);
+    /* 悬疑背景动画 */
+    .mystery-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle at 20% 80%, rgba(139, 0, 0, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(75, 0, 130, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(0, 0, 0, 0.3) 0%, transparent 50%);
+        animation: mysteriousGlow 10s ease-in-out infinite alternate;
+        z-index: -1;
     }
     
-    .user-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 10px;
+    @keyframes mysteriousGlow {
+        0% { opacity: 0.3; }
+        100% { opacity: 0.7; }
     }
     
-    .user-status {
-        display: flex;
-        align-items: center;
-        font-size: 14px;
+    /* 雾气效果 */
+    .fog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.02) 50%, transparent 70%),
+            linear-gradient(-45deg, transparent 30%, rgba(255,255,255,0.01) 50%, transparent 70%);
+        animation: fog 20s linear infinite;
+        pointer-events: none;
+        z-index: 1;
     }
     
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #4CAF50;
-        margin-right: 6px;
-        animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-        70% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+    @keyframes fog {
+        0% { transform: translateX(-100%) translateY(-100%); }
+        100% { transform: translateX(100%) translateY(100%); }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="chat-container">
-    <!-- 用户信息栏 -->
-    <div class="user-info">
-        <div class="d-flex align-items-center">
-            {% if user.avatar %}
-            <img src="{{ user.avatar }}" alt="头像" class="user-avatar">
-            {% else %}
-            <div class="user-avatar bg-white text-primary d-flex align-items-center justify-content-center fw-bold">
-                {{ user.nickname[0].upper() if user.nickname else 'U' }}
+<!-- 悬疑背景 -->
+<div class="mystery-bg"></div>
+<div class="fog-overlay"></div>
+
+<div class="murder-mystery-container">
+    <!-- 游戏状态栏 -->
+    <div class="game-status-bar">
+        <div class="game-info">
+            <div class="story-title">
+                <h3 id="storyTitle">📚 等待剧本加载...</h3>
+                <span class="story-subtitle" id="storySubtitle">神秘故事即将开始</span>
             </div>
-            {% endif %}
-            <div>
-                <div class="fw-bold">{{ user.nickname }}</div>
-                <div class="user-status">
-                    <div class="status-dot"></div>
-                    在线
+            <div class="chapter-info">
+                <span class="chapter-indicator" id="chapterIndicator">准备阶段</span>
+                <span class="progress-bar">
+                    <span class="progress-fill" id="progressFill" style="width: 0%"></span>
+                </span>
+            </div>
+        </div>
+        <div class="game-controls">
+            <button class="mystery-btn" id="newGameBtn" onclick="startNewGame()">
+                🎭 新游戏
+            </button>
+            <button class="mystery-btn" id="loadGameBtn" onclick="loadExistingGame()">
+                📂 加载游戏
+            </button>
+            <button class="mystery-btn" id="configBtn" onclick="showGameConfig()">
+                ⚙️ 配置
+            </button>
+        </div>
+    </div>
+
+    <!-- 游戏配置面板 -->
+    <div class="config-panel" id="configPanel" style="display: none;">
+        <h4>🎮 游戏配置</h4>
+        <div class="config-options">
+            <div class="config-group">
+                <label>剧本来源：</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="scriptSource" value="generate" checked> 🆕 AI生成新剧本</label>
+                    <label><input type="radio" name="scriptSource" value="local"> 📁 使用本地剧本</label>
                 </div>
             </div>
-        </div>
-        <div>
-            <button class="btn btn-outline-light btn-sm" onclick="showUserMenu()">
-                <i class="fas fa-ellipsis-v"></i>
-            </button>
-        </div>
-    </div>
-    
-    <!-- 聊天消息区域 -->
-    <div class="chat-messages" id="chatMessages">
-        <!-- 欢迎消息 -->
-        <div class="message bot-message">
-            <div class="message-content">
-                <h3>欢迎回来，{{ user.nickname }}！</h3>
-                <p>这是一个支持 <strong>Markdown</strong> 格式的聊天界面。</p>
-                <p>你可以发送：</p>
-                <ul>
-                    <li>普通文本</li>
-                    <li><em>斜体文本</em></li>
-                    <li><strong>粗体文本</strong></li>
-                    <li><code>代码片段</code></li>
-                    <li>以及更多Markdown格式</li>
-                </ul>
-                <p>试试发送一些消息吧！</p>
+            <div class="config-group" id="localPathGroup" style="display: none;">
+                <label>本地剧本路径：</label>
+                <input type="text" id="localScriptPath" placeholder="输入剧本文件夹路径，如: log/250805151240">
+                <button class="browse-btn" onclick="browseLocalScripts()">浏览</button>
             </div>
-            <div class="message-time">{{ format_datetime(datetime.utcnow()) }}</div>
-        </div>
-    </div>
-        
-        <!-- 工具按钮区域 -->
-        <div class="toolbar">
-            <button class="tool-btn" id="clearBtn" title="清空聊天">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18"></path>
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                </svg>
-                清空
-            </button>
-            
-            <button class="tool-btn" id="saveBtn" title="保存聊天记录">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                    <polyline points="17,21 17,13 7,13 7,21"></polyline>
-                    <polyline points="7,3 7,8 15,8"></polyline>
-                </svg>
-                保存
-            </button>
-            
-            <button class="tool-btn" id="settingsBtn" title="设置">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
-                </svg>
-                设置
-            </button>
-            
-            <button class="tool-btn" id="helpBtn" title="帮助">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-                帮助
-            </button>
-            
-            <button class="tool-btn" id="exportBtn" title="导出为Markdown">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14,2 14,8 20,8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10,9 9,9 8,9"></polyline>
-                </svg>
-                导出
-            </button>
-        </div>
-        
-        <!-- 输入区域 -->
-        <div class="input-area">
-            <div class="input-container">
-                <textarea 
-                    id="messageInput" 
-                    placeholder="输入消息... (支持Markdown格式)"
-                    rows="3"
-                ></textarea>
-                <button id="sendBtn" class="send-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22,2 15,22 11,13 2,9"></polygon>
-                    </svg>
-                </button>
+            <div class="config-group">
+                <label><input type="checkbox" id="generateImages" checked> 🖼️ 生成角色和线索图片</label>
+                <small>注意：生成图片需要额外时间，但体验更佳</small>
+            </div>
+            <div class="config-group">
+                <label><input type="checkbox" id="waitForCompletion" checked> ⏳ 等待所有内容生成完成</label>
+                <small>确保剧情、图片等所有内容准备就绪后再开始</small>
             </div>
         </div>
+        <div class="config-actions">
+            <button class="mystery-btn cancel-btn" onclick="hideGameConfig()">取消</button>
+            <button class="mystery-btn confirm-btn" onclick="applyGameConfig()">应用配置</button>
+        </div>
     </div>
-</div>
 
-<!-- 用户菜单模态框 -->
-<div class="modal fade" id="userMenuModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h6 class="modal-title">用户菜单</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- 角色选择面板 -->
+    <div class="character-panel" id="characterPanel" style="display: none;">
+        <h4>🎭 选择你的角色</h4>
+        <div class="character-grid" id="characterGrid">
+            <!-- 角色卡片将通过JavaScript动态生成 -->
+        </div>
+        <button class="mystery-btn confirm-btn" id="confirmCharacterBtn" onclick="confirmCharacterSelection()" disabled>
+            确认角色选择
+        </button>
+    </div>
+
+    <!-- 主游戏区域 - 三列布局 -->
+    <div class="main-game-area" id="mainGameArea" style="display: none;">
+        <!-- 左侧面板：玩家列表和状态 -->
+        <div class="left-sidebar">
+            <div class="player-info-panel">
+                <h4>👤 我的角色</h4>
+                <div class="my-character">
+                    <div class="character-avatar" id="myAvatar">🎭</div>
+                    <div class="character-details">
+                        <div class="character-name" id="myCharacterName">角色名称</div>
+                        <div class="player-name">{{ user.nickname }}</div>
+                        <div class="character-status" id="myStatus">准备中</div>
+                    </div>
+                </div>
             </div>
-            <div class="modal-body p-0">
-                <div class="list-group list-group-flush">
-                    <a href="{{ url_for('profile') }}" class="list-group-item list-group-item-action">
-                        <i class="fas fa-user me-2"></i>个人资料
-                    </a>
-                    <a href="#" class="list-group-item list-group-item-action" onclick="loadChatHistory()">
-                        <i class="fas fa-history me-2"></i>聊天历史
-                    </a>
-                    <div class="list-group-item">
-                        <small class="text-muted">
-                            登录次数：{{ user.login_count or 0 }}
-                        </small>
+
+            <div class="players-panel">
+                <h4>👥 其他玩家</h4>
+                <div class="players-list" id="playersList">
+                    <!-- 动态生成玩家列表 -->
+                </div>
+            </div>
+
+            <div class="game-stats-panel">
+                <h4>📊 游戏统计</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">章节</span>
+                        <span class="stat-value" id="currentChapter">0/0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">线索</span>
+                        <span class="stat-value" id="clueCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">时间</span>
+                        <span class="stat-value" id="gameTime">00:00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">发言</span>
+                        <span class="stat-value" id="messageCount">0</span>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- 中央主区域：聊天消息 -->
+        <div class="center-main">
+            <div class="game-messages" id="gameMessages">
+                <!-- 欢迎消息 -->
+                <div class="message welcome-message">
+                    <div class="message-header">
+                        <span class="speaker-icon">🎭</span>
+                        <span class="speaker-name">游戏主持</span>
+                        <span class="message-time">{{ format_datetime(datetime.utcnow()) }}</span>
+                    </div>
+                    <div class="message-content">
+                        <h3>🌙 欢迎来到推理之夜</h3>
+                        <p>欢迎来到这个充满谜团的世界，<strong>{{ user.nickname }}</strong>。</p>
+                        <div class="mystery-quote">
+                            <em>"真相总是隐藏在最不起眼的地方，而凶手可能就在你身边..."</em>
+                        </div>
+                        <p>在这里，你将：</p>
+                        <ul>
+                            <li>🔍 <strong>扮演角色</strong> - 沉浸在精心设计的人物背景中</li>
+                            <li>🕵️ <strong>收集线索</strong> - 在对话中寻找真相的蛛丝马迹</li>
+                            <li>💭 <strong>推理分析</strong> - 运用逻辑揭开谜团</li>
+                            <li>⚡ <strong>实时互动</strong> - 与其他玩家进行真实的角色扮演</li>
+                        </ul>
+                        <div class="warning-box">
+                            ⚠️ <strong>注意</strong>：每个人都有秘密，包括你自己。请仔细阅读角色剧本，保守秘密，真实扮演。
+                        </div>
+                        <p class="game-tip">💡 点击上方 <strong>"配置"</strong> 设置游戏参数，然后 <strong>"新游戏"</strong> 开始你的推理之旅...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="game-input-area" id="gameInputArea">
+                <div class="input-container">
+                    <div class="input-header">
+                        <span class="input-mode" id="inputMode">💬 自由发言</span>
+                        <div class="input-options">
+                            <button class="input-option active" id="speakBtn" onclick="setInputMode('speak')" title="自由发言">
+                                💬
+                            </button>
+                            <button class="input-option" id="askBtn" onclick="setInputMode('ask')" title="询问他人">
+                                ❓
+                            </button>
+                            <button class="input-option" id="whisperBtn" onclick="setInputMode('whisper')" title="私聊">
+                                🤫
+                            </button>
+                            <button class="input-option" id="actionBtn" onclick="setInputMode('action')" title="行动描述">
+                                🎬
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 询问目标选择 -->
+                    <div class="ask-target" id="askTarget" style="display: none;">
+                        <label>询问对象：</label>
+                        <select id="askTargetSelect">
+                            <option value="">选择要询问的人...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 私聊目标选择 -->
+                    <div class="whisper-target" id="whisperTarget" style="display: none;">
+                        <label>私聊对象：</label>
+                        <select id="whisperTargetSelect">
+                            <option value="">选择私聊对象...</option>
+                        </select>
+                    </div>
+                    
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="请输入你的发言内容... (支持Markdown格式)"
+                        rows="3"
+                    ></textarea>
+                    
+                    <div class="input-footer">
+                        <div class="input-stats">
+                            <span id="charCount">0/500</span>
+                            <span class="typing-indicator" id="typingIndicator" style="display: none;">
+                                对方正在输入...
+                            </span>
+                        </div>
+                        <button id="sendBtn" class="send-btn" disabled>
+                            <span class="btn-icon">📤</span>
+                            <span class="btn-text">发送</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板：剧本和工具 -->
+        <div class="right-sidebar">
+            <div class="script-panel">
+                <h4>📜 我的剧本</h4>
+                <div class="script-tabs">
+                    <button class="script-tab active" data-chapter="all" onclick="showScriptChapter('all')">全部</button>
+                    <button class="script-tab" data-chapter="1" onclick="showScriptChapter(1)">第1章</button>
+                    <button class="script-tab" data-chapter="2" onclick="showScriptChapter(2)">第2章</button>
+                    <button class="script-tab" data-chapter="3" onclick="showScriptChapter(3)">第3章</button>
+                </div>
+                <div class="script-content" id="scriptContent">
+                    <div class="script-placeholder">
+                        选择角色后将显示您的剧本内容...
+                    </div>
+                </div>
+            </div>
+
+            <div class="tools-panel">
+                <h4>🔧 游戏工具</h4>
+                <div class="tools-grid">
+                    <button class="tool-btn" id="clueBtn" title="查看线索" onclick="showClues()">
+                        <span class="tool-icon">🔍</span>
+                        <span class="tool-label">线索</span>
+                        <span class="badge" id="clueBadge">0</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="notesBtn" title="个人笔记" onclick="showNotes()">
+                        <span class="tool-icon">📝</span>
+                        <span class="tool-label">笔记</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="historyBtn" title="游戏历史" onclick="showHistory()">
+                        <span class="tool-icon">📚</span>
+                        <span class="tool-label">历史</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="settingsBtn" title="游戏设置" onclick="showSettings()">
+                        <span class="tool-icon">⚙️</span>
+                        <span class="tool-label">设置</span>
+                    </button>
+                    
+                    <button class="tool-btn emergency" id="emergencyBtn" title="紧急呼叫" onclick="emergencyCall()">
+                        <span class="tool-icon">🚨</span>
+                        <span class="tool-label">紧急</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="exitBtn" title="退出游戏" onclick="exitGame()">
+                        <span class="tool-icon">🚪</span>
+                        <span class="tool-label">退出</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模态框容器 -->
+<div id="modalContainer"></div>
+
+<!-- 音效元素 -->
+<audio id="suspenseAudio" preload="auto" loop>
+    <!-- 可以添加悬疑背景音乐 -->
+</audio>
+
+<!-- 进度模态框 -->
+<div id="progressModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <h3>🎭 正在准备游戏...</h3>
+        <div class="progress-container">
+            <div class="progress-bar-full">
+                <div class="progress-bar-fill" id="gameProgressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">初始化中...</div>
+        </div>
+        <div class="progress-details" id="progressDetails">
+            <div class="detail-item">
+                <span class="detail-label">📝 剧本生成：</span>
+                <span class="detail-status" id="scriptStatus">等待中</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">🖼️ 图片生成：</span>
+                <span class="detail-status" id="imageStatus">等待中</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">🎮 游戏准备：</span>
+                <span class="detail-status" id="gameStatus">等待中</span>
+            </div>
+        </div>
+        <div class="progress-actions">
+            <button class="mystery-btn" id="skipWaitBtn" onclick="skipWait()" style="display: none;">
+                跳过等待
+            </button>
+        </div>
     </div>
 </div>
 
 <script>
-// 用户信息
-window.currentUser = {
-    id: {{ user.id }},
-    username: "{{ user.username | safe }}",
-    nickname: "{{ user.nickname | safe }}",
-    avatar: "{{ user.avatar | safe if user.avatar else '' }}"
+// 全局游戏状态
+window.gameState = {
+    user: {
+        id: {{ user.id }},
+        username: "{{ user.username | safe }}",
+        nickname: "{{ user.nickname | safe }}",
+        avatar: "{{ user.avatar | safe if user.avatar else '' }}"
+    },
+    currentCharacter: null,
+    gameSession: null,
+    gameMode: 'waiting', // waiting, character_select, playing, finished
+    currentChapter: 0,
+    totalChapters: 0,
+    players: {},
+    clues: [],
+    notes: '',
+    inputMode: 'speak',
+    config: {
+        scriptSource: 'generate',
+        localScriptPath: '',
+        generateImages: true,
+        waitForCompletion: true
+    }
 };
 
-// 显示用户菜单
-function showUserMenu() {
-    const modal = new bootstrap.Modal(document.getElementById('userMenuModal'));
-    modal.show();
-}
-
-// 加载聊天历史
-function loadChatHistory() {
-    fetch('/api/chat/history')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const messages = data.data.messages;
-                const chatMessages = document.getElementById('chatMessages');
-                
-                // 清空当前消息（保留欢迎消息）
-                const welcomeMessage = chatMessages.querySelector('.message.bot-message');
-                chatMessages.innerHTML = '';
-                if (welcomeMessage) {
-                    chatMessages.appendChild(welcomeMessage);
-                }
-                
-                // 添加历史消息
-                messages.reverse().forEach(msg => {
-                    const messageElement = createMessageElementFromData(msg);
-                    chatMessages.appendChild(messageElement);
-                });
-                
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                bootstrap.Modal.getInstance(document.getElementById('userMenuModal')).hide();
-            }
-        })
-        .catch(error => {
-            console.error('加载历史记录失败:', error);
-            alert('加载历史记录失败');
-        });
-}
-
-// 从数据创建消息元素
-function createMessageElementFromData(messageData) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${messageData.message_type}-message`;
-    messageDiv.setAttribute('data-message-id', messageData.id);
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    
-    try {
-        contentDiv.innerHTML = marked.parse(messageData.content);
-        contentDiv.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
-    } catch (error) {
-        console.error('Markdown渲染错误:', error);
-        contentDiv.textContent = messageData.content;
-    }
-    
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'message-time';
-    timeDiv.textContent = new Date(messageData.timestamp).toLocaleTimeString('zh-CN', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-    
-    messageDiv.appendChild(contentDiv);
-    messageDiv.appendChild(timeDiv);
-    
-    return messageDiv;
-}
+// 初始化游戏界面
+document.addEventListener('DOMContentLoaded', function() {
+    initializeGameInterface();
+    setupGameEvents();
+    checkGameStatus();
+});
 </script>
 
-<script src="{{ url_for('static', filename='chat.js') }}"></script>
+<script src="{{ url_for('static', filename='murder_mystery_v2.js') }}"></script>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// 页面加载完成后的初始化
+// 页面特定的初始化代码
 document.addEventListener('DOMContentLoaded', function() {
-    // 更新聊天界面的API调用以包含认证
-    if (window.chatInterface) {
-        // 重写发送消息方法以使用API
-        const originalSendMessage = window.chatInterface.sendMessage;
-        window.chatInterface.sendMessage = function() {
-            const text = this.messageInput.value.trim();
-            if (!text) return;
-            
-            // 添加用户消息到界面
-            this.addMessage(text, 'user');
-            
-            // 清空输入框
-            this.messageInput.value = '';
-            this.autoResizeTextarea();
-            this.updateSendButton();
-            
-            // 发送到API
-            fetch('/api/chat/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: text,
-                    session_id: window.sessionId || null
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // 添加机器人回复
-                    this.addMessage(data.data.bot_reply.content, 'bot');
-                } else {
-                    this.addMessage('抱歉，发送消息时出现错误：' + data.message, 'system');
-                }
-            })
-            .catch(error => {
-                console.error('发送消息失败:', error);
-                this.addMessage('网络错误，请检查连接后重试。', 'system');
-            });
-        };
+    // 启动背景音效（如果用户允许）
+    const audio = document.getElementById('suspenseAudio');
+    if (audio) {
+        audio.volume = 0.1; // 低音量
+        // 用户交互后才能播放音频
+        document.addEventListener('click', function() {
+            audio.play().catch(e => console.log('音频播放失败:', e));
+        }, { once: true });
     }
     
-    // 生成会话ID
-    if (!window.sessionId) {
-        window.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
+    // 添加键盘快捷键
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter 发送消息
+        if (e.ctrlKey && e.key === 'Enter') {
+            sendMessage();
+        }
+        // Esc 关闭模态框
+        if (e.key === 'Escape') {
+            closeAllModals();
+        }
+    });
+    
+    // 配置面板切换
+    document.querySelectorAll('input[name="scriptSource"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const localPathGroup = document.getElementById('localPathGroup');
+            if (this.value === 'local') {
+                localPathGroup.style.display = 'block';
+            } else {
+                localPathGroup.style.display = 'none';
+            }
+        });
+    });
 });
 </script>
 {% endblock %}

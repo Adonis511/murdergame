@@ -10,6 +10,15 @@ from config import Config
 from models import db, User, ChatMessage, LoginLog, init_db
 from ai_service import ai_service
 
+# 导入游戏API蓝图
+try:
+    from game_api import game_bp
+    GAME_API_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ 游戏API模块导入失败: {e}")
+    print("⚠️ 剧本杀游戏功能可能不可用")
+    GAME_API_AVAILABLE = False
+
 # 创建Flask应用实例
 app = Flask(__name__, 
             template_folder='template',  # 模板文件夹
@@ -25,6 +34,11 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = '请先登录后访问此页面。'
 login_manager.login_message_category = 'info'
+
+# 注册游戏API蓝图
+if GAME_API_AVAILABLE:
+    app.register_blueprint(game_bp)
+    print("✅ 剧本杀游戏API已注册")
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -159,8 +173,20 @@ def logout():
 @app.route('/chat')
 @login_required
 def chat():
-    """聊天界面路由"""
+    """剧本杀游戏界面路由（新版本）"""
+    return render_template('chat_v3.html', user=current_user)
+
+@app.route('/chat-old')
+@login_required
+def chat_old():
+    """剧本杀游戏界面路由（旧版本）"""
     return render_template('chat.html', user=current_user)
+
+@app.route('/murder-mystery')
+@login_required
+def murder_mystery():
+    """剧本杀游戏专用界面路由"""
+    return render_template('murder_mystery_chat.html', user=current_user)
 
 @app.route('/profile')
 @login_required
@@ -308,6 +334,12 @@ def get_config():
             'max_message_length': Config.MAX_MESSAGE_LENGTH,
             'ai_enabled': True,
             'ai_model': Config.OPENAI_MODEL,
+            'game_api_enabled': GAME_API_AVAILABLE,
+            'GAME_PLAYER_SPEAK_TIME': Config.GAME_PLAYER_SPEAK_TIME,
+            'GAME_PLAYER_ANSWER_TIME': Config.GAME_PLAYER_ANSWER_TIME,
+            'GAME_CHAPTER_CYCLES': Config.GAME_CHAPTER_CYCLES,
+            'GAME_DM_SPEAK_DELAY': Config.GAME_DM_SPEAK_DELAY,
+            'GAME_AI_RESPONSE_DELAY': Config.GAME_AI_RESPONSE_DELAY,
             'supported_languages': [
                 'javascript', 'python', 'java', 'html', 'css', 
                 'markdown', 'json', 'xml', 'sql', 'cpp', 'csharp'
@@ -318,7 +350,8 @@ def get_config():
                 {'id': 'export', 'label': '导出', 'enabled': True},
                 {'id': 'settings', 'label': '设置', 'enabled': True},
                 {'id': 'help', 'label': '帮助', 'enabled': True},
-                {'id': 'ai_test', 'label': 'AI测试', 'enabled': True}
+                {'id': 'ai_test', 'label': 'AI测试', 'enabled': True},
+                {'id': 'murder_mystery', 'label': '剧本杀', 'enabled': GAME_API_AVAILABLE}
             ]
         }
     })
@@ -374,6 +407,11 @@ def css_files(filename):
 def js_files(filename):
     """JavaScript文件路由"""
     return send_from_directory('template', filename)
+
+@app.route('/log/<path:filename>')
+def game_files(filename):
+    """游戏文件路由（包括图片）"""
+    return send_from_directory('log', filename)
 
 # 错误处理
 @app.errorhandler(404)
@@ -454,6 +492,8 @@ if __name__ == '__main__':
     print("🚀 聊天应用启动中...")
     print("=" * 50)
     print("📱 聊天界面: http://localhost:5000/chat")
+    if GAME_API_AVAILABLE:
+        print("🎭 剧本杀游戏: http://localhost:5000/murder-mystery")
     print("🔑 登录页面: http://localhost:5000/login")
     print("📝 注册页面: http://localhost:5000/register")
     print("🔧 API状态: http://localhost:5000/api/status")

@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}剧本杀游戏大厅 - 推理之夜{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='murder_mystery.css') }}">
+<!-- 引入必要的库 -->
+<script src="https://cdn.jsdelivr.net/npm/marked@5.1.1/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<!-- 悬疑音效 -->
+<style>
+    body {
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+        color: #e0e0e0;
+        font-family: 'Georgia', 'Times New Roman', serif;
+        overflow: hidden;
+    }
+    
+    /* 覆盖导航栏样式 */
+    .navbar {
+        background: rgba(0, 0, 0, 0.9) !important;
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid #8B0000;
+    }
+    
+    main {
+        padding: 0;
+        height: 100vh;
+    }
+    
+    /* 悬疑背景动画 */
+    .mystery-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle at 20% 80%, rgba(139, 0, 0, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(75, 0, 130, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(0, 0, 0, 0.3) 0%, transparent 50%);
+        animation: mysteriousGlow 10s ease-in-out infinite alternate;
+        z-index: -1;
+    }
+    
+    @keyframes mysteriousGlow {
+        0% { opacity: 0.3; }
+        100% { opacity: 0.7; }
+    }
+    
+    /* 雾气效果 */
+    .fog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.02) 50%, transparent 70%),
+            linear-gradient(-45deg, transparent 30%, rgba(255,255,255,0.01) 50%, transparent 70%);
+        animation: fog 20s linear infinite;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    @keyframes fog {
+        0% { transform: translateX(-100%) translateY(-100%); }
+        100% { transform: translateX(100%) translateY(100%); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 悬疑背景 -->
+<div class="mystery-bg"></div>
+<div class="fog-overlay"></div>
+
+<div class="murder-mystery-container">
+    <!-- 游戏状态栏 -->
+    <div class="game-status-bar">
+        <div class="game-info">
+            <div class="story-title">
+                <h3 id="storyTitle">📚 等待剧本加载...</h3>
+                <span class="story-subtitle" id="storySubtitle">神秘故事即将开始</span>
+            </div>
+            <div class="chapter-info">
+                <span class="chapter-indicator" id="chapterIndicator">准备阶段</span>
+                <span class="progress-bar">
+                    <span class="progress-fill" id="progressFill" style="width: 0%"></span>
+                </span>
+            </div>
+        </div>
+        <div class="game-controls">
+            <button class="mystery-btn" id="newGameBtn" onclick="startNewGame()">
+                🎭 新游戏
+            </button>
+            <button class="mystery-btn" id="loadGameBtn" onclick="loadExistingGame()">
+                📂 加载游戏
+            </button>
+            <button class="mystery-btn" id="gameMenuBtn" onclick="showGameMenu()">
+                ⚙️ 游戏设置
+            </button>
+        </div>
+    </div>
+
+    <!-- 角色选择面板 -->
+    <div class="character-panel" id="characterPanel" style="display: none;">
+        <h4>🎭 选择你的角色</h4>
+        <div class="character-grid" id="characterGrid">
+            <!-- 角色卡片将通过JavaScript动态生成 -->
+        </div>
+        <button class="mystery-btn confirm-btn" id="confirmCharacterBtn" onclick="confirmCharacterSelection()" disabled>
+            确认角色选择
+        </button>
+    </div>
+
+    <!-- 玩家信息栏 -->
+    <div class="player-info-bar" id="playerInfoBar" style="display: none;">
+        <div class="player-card">
+            <div class="player-avatar" id="playerAvatar">
+                🎭
+            </div>
+            <div class="player-details">
+                <h4 id="playerName">{{ user.nickname }}</h4>
+                <span class="character-name" id="characterName">选择角色...</span>
+                <span class="player-status" id="playerStatus">等待中</span>
+            </div>
+        </div>
+        <div class="other-players" id="otherPlayers">
+            <!-- 其他玩家信息 -->
+        </div>
+        <div class="game-stats">
+            <div class="stat-item">
+                <span class="stat-label">章节</span>
+                <span class="stat-value" id="currentChapter">0/0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">线索</span>
+                <span class="stat-value" id="clueCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">时间</span>
+                <span class="stat-value" id="gameTime">00:00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏消息区域 -->
+    <div class="game-messages" id="gameMessages">
+        <!-- 欢迎消息 -->
+        <div class="message welcome-message">
+            <div class="message-header">
+                <span class="speaker-icon">🎭</span>
+                <span class="speaker-name">游戏主持</span>
+                <span class="message-time">{{ format_datetime(datetime.utcnow()) }}</span>
+            </div>
+            <div class="message-content">
+                <h3>🌙 欢迎来到推理之夜</h3>
+                <p>欢迎来到这个充满谜团的世界，<strong>{{ user.nickname }}</strong>。</p>
+                <div class="mystery-quote">
+                    <em>"真相总是隐藏在最不起眼的地方，而凶手可能就在你身边..."</em>
+                </div>
+                <p>在这里，你将：</p>
+                <ul>
+                    <li>🔍 <strong>扮演角色</strong> - 沉浸在精心设计的人物背景中</li>
+                    <li>🕵️ <strong>收集线索</strong> - 在对话中寻找真相的蛛丝马迹</li>
+                    <li>💭 <strong>推理分析</strong> - 运用逻辑揭开谜团</li>
+                    <li>⚡ <strong>实时互动</strong> - 与其他玩家进行真实的角色扮演</li>
+                </ul>
+                <div class="warning-box">
+                    ⚠️ <strong>注意</strong>：每个人都有秘密，包括你自己。请仔细阅读角色剧本，保守秘密，真实扮演。
+                </div>
+                <p class="game-tip">💡 点击上方 <strong>"新游戏"</strong> 开始你的推理之旅，或 <strong>"加载游戏"</strong> 继续未完成的故事...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="game-toolbar">
+        <div class="tool-group">
+            <button class="tool-btn" id="clueBtn" title="查看线索" onclick="showClues()">
+                <span class="tool-icon">🔍</span>
+                <span class="tool-label">线索</span>
+                <span class="badge" id="clueBadge">0</span>
+            </button>
+            
+            <button class="tool-btn" id="scriptBtn" title="查看剧本" onclick="showScript()">
+                <span class="tool-icon">📜</span>
+                <span class="tool-label">剧本</span>
+            </button>
+            
+            <button class="tool-btn" id="notesBtn" title="个人笔记" onclick="showNotes()">
+                <span class="tool-icon">📝</span>
+                <span class="tool-label">笔记</span>
+            </button>
+        </div>
+        
+        <div class="tool-group">
+            <button class="tool-btn" id="playersBtn" title="玩家列表" onclick="showPlayers()">
+                <span class="tool-icon">👥</span>
+                <span class="tool-label">玩家</span>
+            </button>
+            
+            <button class="tool-btn" id="historyBtn" title="游戏历史" onclick="showHistory()">
+                <span class="tool-icon">📚</span>
+                <span class="tool-label">历史</span>
+            </button>
+            
+            <button class="tool-btn" id="settingsBtn" title="游戏设置" onclick="showSettings()">
+                <span class="tool-icon">⚙️</span>
+                <span class="tool-label">设置</span>
+            </button>
+        </div>
+        
+        <div class="tool-group">
+            <button class="tool-btn emergency" id="emergencyBtn" title="紧急呼叫" onclick="emergencyCall()">
+                <span class="tool-icon">🚨</span>
+                <span class="tool-label">紧急</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="game-input-area" id="gameInputArea">
+        <div class="input-container">
+            <div class="input-header">
+                <span class="input-mode" id="inputMode">💬 自由发言</span>
+                <div class="input-options">
+                    <button class="input-option" id="speakBtn" onclick="setInputMode('speak')" title="自由发言">
+                        💬
+                    </button>
+                    <button class="input-option" id="askBtn" onclick="setInputMode('ask')" title="询问他人">
+                        ❓
+                    </button>
+                    <button class="input-option" id="whisperBtn" onclick="setInputMode('whisper')" title="私聊">
+                        🤫
+                    </button>
+                    <button class="input-option" id="actionBtn" onclick="setInputMode('action')" title="行动描述">
+                        🎬
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 询问目标选择 -->
+            <div class="ask-target" id="askTarget" style="display: none;">
+                <label>询问对象：</label>
+                <select id="askTargetSelect">
+                    <option value="">选择要询问的人...</option>
+                </select>
+            </div>
+            
+            <!-- 私聊目标选择 -->
+            <div class="whisper-target" id="whisperTarget" style="display: none;">
+                <label>私聊对象：</label>
+                <select id="whisperTargetSelect">
+                    <option value="">选择私聊对象...</option>
+                </select>
+            </div>
+            
+            <textarea 
+                id="messageInput" 
+                placeholder="请输入你的发言内容... (支持Markdown格式)"
+                rows="3"
+            ></textarea>
+            
+            <div class="input-footer">
+                <div class="input-stats">
+                    <span id="charCount">0/500</span>
+                    <span class="typing-indicator" id="typingIndicator" style="display: none;">
+                        对方正在输入...
+                    </span>
+                </div>
+                <button id="sendBtn" class="send-btn" disabled>
+                    <span class="btn-icon">📤</span>
+                    <span class="btn-text">发送</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模态框容器 -->
+<div id="modalContainer"></div>
+
+<!-- 音效元素 -->
+<audio id="suspenseAudio" preload="auto" loop>
+    <!-- 可以添加悬疑背景音乐 -->
+</audio>
+
+<script>
+// 全局游戏状态
+window.gameState = {
+    user: {
+        id: {{ user.id }},
+        username: "{{ user.username | safe }}",
+        nickname: "{{ user.nickname | safe }}",
+        avatar: "{{ user.avatar | safe if user.avatar else '' }}"
+    },
+    currentCharacter: null,
+    gameSession: null,
+    gameMode: 'waiting', // waiting, character_select, playing, finished
+    currentChapter: 0,
+    totalChapters: 0,
+    players: {},
+    clues: [],
+    notes: '',
+    inputMode: 'speak'
+};
+
+// 初始化游戏界面
+document.addEventListener('DOMContentLoaded', function() {
+    initializeGameInterface();
+    setupGameEvents();
+    checkGameStatus();
+});
+</script>
+
+<script src="{{ url_for('static', filename='murder_mystery.js') }}"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面特定的初始化代码
+document.addEventListener('DOMContentLoaded', function() {
+    // 启动背景音效（如果用户允许）
+    const audio = document.getElementById('suspenseAudio');
+    if (audio) {
+        audio.volume = 0.1; // 低音量
+        // 用户交互后才能播放音频
+        document.addEventListener('click', function() {
+            audio.play().catch(e => console.log('音频播放失败:', e));
+        }, { once: true });
+    }
+    
+    // 添加键盘快捷键
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter 发送消息
+        if (e.ctrlKey && e.key === 'Enter') {
+            sendMessage();
+        }
+        // Esc 关闭模态框
+        if (e.key === 'Escape') {
+            closeAllModals();
+        }
+    });
+    
+    // 添加页面可见性变化监听
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            pauseGameTimer();
+        } else {
+            resumeGameTimer();
+            checkForNewMessages();
+        }
+    });
+});
+</script>
+{% endblock %}

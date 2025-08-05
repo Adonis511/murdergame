@@ -32,3 +32,10 @@ class Config:
     # LLM配置
     API_BASE = os.environ.get('API_BASE') or "https://dashscope.aliyuncs.com/compatible-mode/v1"
     API_KEY = os.environ.get('API_KEY') or "sk-fb535aeda39f42d0b8f7039b98699374"
+    
+    # 剧本杀游戏流程配置
+    GAME_PLAYER_SPEAK_TIME = int(os.environ.get('GAME_PLAYER_SPEAK_TIME', '180'))  # 玩家发言阶段时间(秒) - 默认3分钟
+    GAME_PLAYER_ANSWER_TIME = int(os.environ.get('GAME_PLAYER_ANSWER_TIME', '60'))  # 玩家回答阶段时间(秒) - 默认1分钟
+    GAME_CHAPTER_CYCLES = int(os.environ.get('GAME_CHAPTER_CYCLES', '3'))  # 每章节循环次数 - 默认3次
+    GAME_DM_SPEAK_DELAY = int(os.environ.get('GAME_DM_SPEAK_DELAY', '2'))  # DM发言延迟(秒) - 默认2秒
+    GAME_AI_RESPONSE_DELAY = int(os.environ.get('GAME_AI_RESPONSE_DELAY', '3'))  # AI玩家回应延迟(秒) - 默认3秒

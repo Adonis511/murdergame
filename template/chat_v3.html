@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}剧本杀游戏 - 严格流程版{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='game_flow_v3.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/marked@5.1.1/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- 悬疑背景 -->
+<div class="mystery-bg"></div>
+<div class="fog-overlay"></div>
+
+<div class="game-container">
+    <!-- 游戏状态栏 -->
+    <div class="game-status-bar">
+        <div class="game-info">
+            <div class="story-title" id="storyTitle">📚 等待剧本加载...</div>
+            <div class="phase-info">
+                <span class="current-phase" id="currentPhase">准备阶段</span>
+                <span class="chapter-info" id="chapterInfo">第0章</span>
+                <span class="cycle-info" id="cycleInfo">循环 0/3</span>
+                <div class="timer-container">
+                    <span class="timer" id="phaseTimer">--:--</span>
+                    <div class="timer-bar">
+                        <div class="timer-fill" id="timerFill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="game-controls">
+            <button class="control-btn" id="configBtn" onclick="showGameConfig()">⚙️ 配置</button>
+            <button class="control-btn" id="newGameBtn" onclick="startNewGame()">🎭 新游戏</button>
+            <button class="control-btn" id="loadGameBtn" onclick="loadExistingGame()">📂 加载游戏</button>
+        </div>
+    </div>
+
+    <!-- 游戏配置面板 -->
+    <div class="config-panel" id="configPanel" style="display: none;">
+        <h3>🎮 游戏配置</h3>
+        <div class="config-form">
+            <div class="config-group">
+                <label>剧本来源：</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="scriptSource" value="generate" checked> 🆕 AI生成新剧本</label>
+                    <label><input type="radio" name="scriptSource" value="local"> 📁 使用本地剧本</label>
+                </div>
+            </div>
+            <div class="config-group" id="localPathGroup" style="display: none;">
+                <label>本地剧本路径：</label>
+                <input type="text" id="localScriptPath" placeholder="输入剧本文件夹路径">
+                <button class="browse-btn" onclick="browseLocalScripts()">浏览</button>
+            </div>
+            <div class="config-group">
+                <label><input type="checkbox" id="generateImages" checked> 🖼️ 生成角色图片</label>
+            </div>
+            <div class="config-actions">
+                <button class="control-btn cancel" onclick="hideGameConfig()">取消</button>
+                <button class="control-btn confirm" onclick="applyGameConfig()">应用配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 角色选择面板 -->
+    <div class="character-selection" id="characterSelection" style="display: none;">
+        <h3>🎭 选择你的角色</h3>
+        <div class="character-grid" id="characterGrid"></div>
+        <button class="control-btn confirm" id="confirmCharacterBtn" onclick="confirmCharacterSelection()" disabled>
+            确认角色选择
+        </button>
+    </div>
+
+    <!-- 主游戏界面 -->
+    <div class="game-main" id="gameMain" style="display: none;">
+        <!-- 左侧：角色列表 -->
+        <div class="characters-panel">
+            <h4>👥 角色列表</h4>
+            <div class="characters-list" id="charactersList">
+                <!-- 动态生成角色列表 -->
+            </div>
+            
+            <h4>📊 游戏统计</h4>
+            <div class="game-stats">
+                <div class="stat-item">
+                    <span class="stat-label">当前章节</span>
+                    <span class="stat-value" id="currentChapterStat">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">循环次数</span>
+                    <span class="stat-value" id="currentCycleStat">0/3</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">已收集线索</span>
+                    <span class="stat-value" id="clueCountStat">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">游戏时长</span>
+                    <span class="stat-value" id="gameTimeStat">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中央：消息区域 -->
+        <div class="messages-area">
+            <div class="messages-container" id="messagesContainer">
+                <!-- 欢迎消息 -->
+                <div class="welcome-message">
+                    <h3>🌙 欢迎来到剧本杀游戏</h3>
+                    <p>亲爱的 <strong>{{ user.nickname }}</strong>，欢迎来到这个充满谜团的世界。</p>
+                    <div class="game-rules">
+                        <h4>🎯 游戏流程：</h4>
+                        <ol>
+                            <li><strong>🎭 DM发言阶段</strong> - 游戏主持人介绍情况和线索</li>
+                            <li><strong>💬 玩家发言阶段</strong> - 你可以发言并询问其他玩家</li>
+                            <li><strong>🗣️ 玩家回答阶段</strong> - 被询问的玩家回答问题</li>
+                        </ol>
+                        <p>每个章节会进行3次循环，最后DM总结推进剧情。</p>
+                    </div>
+                    <p class="start-tip">点击"配置"设置游戏参数，然后"新游戏"开始你的推理之旅！</p>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-area" id="inputArea" style="display: none;">
+                <div class="phase-indicator" id="phaseIndicator">
+                    <span class="phase-text" id="phaseText">等待阶段</span>
+                    <span class="phase-timer" id="phaseTimerDisplay">--:--</span>
+                </div>
+                
+                <!-- 发言输入 -->
+                <div class="speak-input" id="speakInput">
+                    <label>💬 你的发言：</label>
+                    <textarea id="contentInput" placeholder="输入你的发言内容..." rows="3" maxlength="500"></textarea>
+                    <div class="char-count" id="charCount">0/500</div>
+                </div>
+
+                <!-- 询问其他玩家 -->
+                <div class="query-section" id="querySection">
+                    <div class="query-header">
+                        <label>❓ 询问其他玩家：</label>
+                        <button class="query-toggle-btn" id="queryToggleBtn" onclick="toggleQuerySection()">
+                            展开询问
+                        </button>
+                    </div>
+                    <div class="query-list" id="queryList" style="display: none;">
+                        <!-- 动态生成询问列表 -->
+                    </div>
+                </div>
+
+                <!-- 发送按钮 -->
+                <div class="send-section">
+                    <button class="send-btn" id="sendBtn" onclick="prepareSendMessage()">
+                        📤 发送
+                    </button>
+                </div>
+            </div>
+
+            <!-- 阶段禁用提示 -->
+            <div class="phase-disabled" id="phaseDisabled" style="display: none;">
+                <div class="disabled-message">
+                    <span class="disabled-icon">🚫</span>
+                    <span class="disabled-text" id="disabledText">当前阶段不允许发言</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：剧本和工具 -->
+        <div class="script-tools-panel">
+            <div class="my-script">
+                <h4>📜 我的剧本</h4>
+                <div class="script-tabs">
+                    <button class="script-tab active" data-chapter="current" onclick="showScriptChapter('current')">
+                        当前章节
+                    </button>
+                    <button class="script-tab" data-chapter="all" onclick="showScriptChapter('all')">
+                        已知剧本
+                    </button>
+                </div>
+                <div class="script-content" id="scriptContent">
+                    <div class="script-placeholder">选择角色后将显示剧本内容...</div>
+                </div>
+            </div>
+
+            <div class="game-tools">
+                <h4>🔧 游戏工具</h4>
+                <div class="tools-grid">
+                    <button class="tool-btn" onclick="showClues()">
+                        <span class="tool-icon">🔍</span>
+                        <span class="tool-text">线索</span>
+                        <span class="badge" id="clueBadge">0</span>
+                    </button>
+                    <button class="tool-btn" onclick="showNotes()">
+                        <span class="tool-icon">📝</span>
+                        <span class="tool-text">笔记</span>
+                    </button>
+                    <button class="tool-btn" onclick="showHistory()">
+                        <span class="tool-icon">📚</span>
+                        <span class="tool-text">历史</span>
+                    </button>
+                    <button class="tool-btn" onclick="showSettings()">
+                        <span class="tool-icon">⚙️</span>
+                        <span class="tool-text">设置</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 确认发送模态框 -->
+<div class="modal-overlay" id="sendConfirmModal" style="display: none;">
+    <div class="modal-content">
+        <h3>📤 确认发送</h3>
+        <div class="confirm-content">
+            <div class="confirm-section">
+                <h4>💬 你的发言：</h4>
+                <div class="confirm-preview" id="contentPreview"></div>
+            </div>
+            <div class="confirm-section" id="queriesPreview" style="display: none;">
+                <h4>❓ 询问其他玩家：</h4>
+                <div class="queries-list" id="queriesListPreview"></div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="control-btn cancel" onclick="cancelSendMessage()">取消</button>
+            <button class="control-btn confirm" onclick="confirmSendMessage()">确认发送</button>
+        </div>
+    </div>
+</div>
+
+<!-- 进度模态框 -->
+<div class="modal-overlay" id="progressModal" style="display: none;">
+    <div class="modal-content">
+        <h3>🎭 正在准备游戏...</h3>
+        <div class="progress-info">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">初始化中...</div>
+        </div>
+        <div class="progress-details">
+            <div class="progress-item">
+                <span class="progress-label">📝 剧本生成：</span>
+                <span class="progress-status" id="scriptStatus">等待中</span>
+            </div>
+            <div class="progress-item">
+                <span class="progress-label">🖼️ 图片生成：</span>
+                <span class="progress-status" id="imageStatus">等待中</span>
+            </div>
+            <div class="progress-item">
+                <span class="progress-label">🎮 游戏准备：</span>
+                <span class="progress-status" id="gameStatus">等待中</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 全局状态 -->
+<script>
+window.gameState = {
+    user: {
+        id: {{ user.id }},
+        username: "{{ user.username | safe }}",
+        nickname: "{{ user.nickname | safe }}"
+    },
+    gameSession: null,
+    currentCharacter: null,
+    gameMode: 'waiting', // waiting, character_select, playing
+    currentPhase: 'waiting', // waiting, dm_speak, player_speak, player_answer, dm_summary
+    currentChapter: 0,
+    currentCycle: 0,
+    totalCycles: 3,
+    phaseTimer: null,
+    phaseTimeLeft: 0,
+    characters: [],
+    pendingContent: '',
+    pendingQueries: {},
+    config: {
+        scriptSource: 'generate',
+        localScriptPath: '',
+        generateImages: true
+    }
+};
+</script>
+
+<script src="{{ url_for('static', filename='game_flow_v3.js') }}"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化游戏界面
+    window.gameController = new GameFlowController();
+    
+    // 设置快捷键
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter 发送消息
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            if (window.gameController) {
+                window.gameController.prepareSendMessage();
+            }
+        }
+        // Esc 关闭模态框
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }
+    });
+    
+    // 配置变更监听
+    document.querySelectorAll('input[name="scriptSource"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const localPathGroup = document.getElementById('localPathGroup');
+            localPathGroup.style.display = this.value === 'local' ? 'block' : 'none';
+        });
+    });
+    
+    // 字符计数
+    const contentInput = document.getElementById('contentInput');
+    if (contentInput) {
+        contentInput.addEventListener('input', function() {
+            const charCount = document.getElementById('charCount');
+            const length = this.value.length;
+            charCount.textContent = `${length}/500`;
+            
+            if (length > 450) {
+                charCount.style.color = '#FF6B6B';
+            } else if (length > 350) {
+                charCount.style.color = '#FFA500';
+            } else {
+                charCount.style.color = '#888';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

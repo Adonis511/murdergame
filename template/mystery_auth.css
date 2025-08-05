@@ -1,0 +1,444 @@
+/* 剧本杀悬疑风格 - 登录注册页面 */
+
+/* 基础样式重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
+    color: #e0e0e0;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* 隐藏导航栏 */
+.navbar {
+    display: none !important;
+}
+
+/* 悬疑背景效果 */
+.mystery-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(circle at 20% 80%, rgba(139, 0, 0, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(75, 0, 130, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(0, 0, 0, 0.4) 0%, transparent 50%);
+    animation: mysteriousGlow 12s ease-in-out infinite alternate;
+    z-index: -2;
+}
+
+@keyframes mysteriousGlow {
+    0% { opacity: 0.3; }
+    100% { opacity: 0.8; }
+}
+
+/* 雾气效果 */
+.fog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.02) 50%, transparent 70%),
+        linear-gradient(-45deg, transparent 30%, rgba(255,255,255,0.01) 50%, transparent 70%);
+    animation: fog 25s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes fog {
+    0% { transform: translateX(-100%) translateY(-100%); }
+    100% { transform: translateX(100%) translateY(100%); }
+}
+
+/* 主容器 */
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+/* 认证卡片 */
+.auth-card {
+    background: rgba(10, 10, 10, 0.9);
+    border: 2px solid #8B0000;
+    border-radius: 15px;
+    backdrop-filter: blur(20px);
+    box-shadow: 
+        0 15px 35px rgba(139, 0, 0, 0.3),
+        0 5px 15px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    max-width: 450px;
+    width: 100%;
+    animation: fadeInUp 1s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 卡片内光效 */
+.auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 215, 0, 0.1), 
+        transparent);
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* 卡片头部 */
+.auth-header {
+    background: linear-gradient(135deg, 
+        rgba(139, 0, 0, 0.8) 0%, 
+        rgba(75, 0, 130, 0.8) 100%);
+    color: #FFD700;
+    text-align: center;
+    padding: 30px 20px;
+    border-bottom: 2px solid #8B0000;
+    position: relative;
+}
+
+.auth-header h3 {
+    font-size: 1.8em;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    margin-bottom: 8px;
+}
+
+.auth-header p {
+    opacity: 0.9;
+    font-size: 1em;
+    font-style: italic;
+    margin: 0;
+}
+
+.auth-header i {
+    font-size: 1.2em;
+    margin-right: 8px;
+    color: #FFD700;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+}
+
+/* 卡片主体 */
+.auth-body {
+    padding: 40px 30px;
+}
+
+/* 表单控件样式 */
+.form-label {
+    color: #e0e0e0;
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group-text {
+    background: rgba(139, 0, 0, 0.2);
+    border: 1px solid #8B0000;
+    color: #FFD700;
+    border-right: none;
+}
+
+.form-control {
+    background: rgba(20, 20, 20, 0.8);
+    border: 1px solid #8B0000;
+    color: #e0e0e0;
+    border-left: none;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    background: rgba(30, 30, 30, 0.9);
+    border-color: #FFD700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+    color: #e0e0e0;
+}
+
+.form-control::placeholder {
+    color: rgba(224, 224, 224, 0.5);
+    font-style: italic;
+}
+
+/* 密码切换按钮 */
+.btn-outline-secondary {
+    background: rgba(139, 0, 0, 0.2);
+    border: 1px solid #8B0000;
+    color: #FFD700;
+    border-left: none;
+}
+
+.btn-outline-secondary:hover {
+    background: rgba(139, 0, 0, 0.4);
+    border-color: #FFD700;
+    color: #FFD700;
+}
+
+/* 检查框 */
+.form-check-input {
+    background-color: rgba(20, 20, 20, 0.8);
+    border: 2px solid #8B0000;
+}
+
+.form-check-input:checked {
+    background-color: #8B0000;
+    border-color: #8B0000;
+}
+
+.form-check-label {
+    color: #e0e0e0;
+    font-size: 0.9em;
+}
+
+/* 按钮样式 */
+.btn-mystery {
+    background: linear-gradient(135deg, #8B0000, #B22222);
+    border: 2px solid #FFD700;
+    color: #FFD700;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 12px 30px;
+    border-radius: 8px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-mystery::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 215, 0, 0.2), 
+        transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-mystery:hover {
+    background: linear-gradient(135deg, #A52A2A, #DC143C);
+    border-color: #FFD700;
+    color: #FFD700;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(139, 0, 0, 0.4);
+}
+
+.btn-mystery:hover::before {
+    left: 100%;
+}
+
+/* 分隔线 */
+.auth-divider {
+    text-align: center;
+    margin: 30px 0;
+    position: relative;
+}
+
+.auth-divider hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(139, 0, 0, 0.5), 
+        transparent);
+}
+
+.auth-divider span {
+    background: rgba(10, 10, 10, 0.9);
+    color: rgba(224, 224, 224, 0.7);
+    padding: 0 15px;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+/* 链接样式 */
+.auth-link {
+    color: #FFD700;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.auth-link:hover {
+    color: #FFA500;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+/* 信息卡片 */
+.info-card {
+    background: rgba(10, 10, 10, 0.8);
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    backdrop-filter: blur(10px);
+    animation: fadeInUp 1s ease-out 0.3s both;
+}
+
+.info-card h6 {
+    color: #FFD700;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.info-card .text-muted {
+    color: rgba(224, 224, 224, 0.7) !important;
+}
+
+.info-card code {
+    background: rgba(139, 0, 0, 0.2);
+    color: #FFD700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+}
+
+/* 密码强度指示器 */
+.progress {
+    background: rgba(20, 20, 20, 0.8);
+    border: 1px solid #444;
+    height: 6px;
+}
+
+.progress-bar {
+    transition: all 0.3s ease;
+}
+
+/* 验证反馈 */
+.invalid-feedback {
+    color: #FF6B6B;
+    font-size: 0.85em;
+    margin-top: 5px;
+}
+
+.form-text {
+    color: rgba(224, 224, 224, 0.6);
+    font-size: 0.8em;
+    margin-top: 5px;
+}
+
+/* 图标颜色 */
+.text-success i {
+    color: #4CAF50 !important;
+}
+
+.text-danger i {
+    color: #FF6B6B !important;
+}
+
+.text-warning i {
+    color: #FFD700 !important;
+}
+
+.text-info i {
+    color: #2196F3 !important;
+}
+
+.text-muted i {
+    color: rgba(224, 224, 224, 0.5) !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 576px) {
+    .auth-container {
+        padding: 10px;
+    }
+    
+    .auth-card {
+        margin: 0;
+    }
+    
+    .auth-body {
+        padding: 30px 20px;
+    }
+    
+    .auth-header {
+        padding: 25px 15px;
+    }
+    
+    .auth-header h3 {
+        font-size: 1.5em;
+    }
+}
+
+/* 加载动画 */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.loading .btn-mystery {
+    background: linear-gradient(135deg, #666, #888);
+    border-color: #999;
+    color: #999;
+}
+
+/* 页脚隐藏（如果有的话） */
+.footer {
+    display: none !important;
+}
+
+/* Flash消息样式覆盖 */
+.alert {
+    background: rgba(10, 10, 10, 0.9) !important;
+    border: 1px solid #8B0000 !important;
+    color: #e0e0e0 !important;
+    border-radius: 8px !important;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    border-color: #4CAF50 !important;
+    color: #4CAF50 !important;
+}
+
+.alert-danger {
+    border-color: #FF6B6B !important;
+    color: #FF6B6B !important;
+}
+
+.alert-info {
+    border-color: #2196F3 !important;
+    color: #2196F3 !important;
+}

@@ -44,6 +44,22 @@ if GAME_API_AVAILABLE:
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.before_request
+def require_login():
+    """在请求处理前检查登录状态"""
+    # 定义不需要登录的端点
+    exempt_endpoints = ['login', 'register', 'static', 'css_files', 'js_files', 'game_files']
+    # API端点中的一些公开接口
+    exempt_api_endpoints = ['api_status', 'get_config']
+    
+    # 如果当前端点在免登录列表中，直接通过
+    if request.endpoint in exempt_endpoints or request.endpoint in exempt_api_endpoints:
+        return
+    
+    # 如果用户未登录且不是注册相关请求，跳转到登录页面
+    if not current_user.is_authenticated:
+        return redirect(url_for('login', next=request.url))
+
 # 表单类
 class LoginForm(FlaskForm):
     """登录表单"""
@@ -88,6 +104,9 @@ class MessageForm(FlaskForm):
 @app.route('/')
 def index():
     """首页路由"""
+    # 如果用户未登录，跳转到登录页面
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -124,7 +143,7 @@ def login():
                 # 重定向到用户想要访问的页面
                 next_page = request.args.get('next')
                 if not next_page or not next_page.startswith('/'):
-                    next_page = url_for('index')
+                    next_page = url_for('chat')  # 登录后默认跳转到游戏页面
                 return redirect(next_page)
             else:
                 log_entry.failure_reason = '账户已被禁用'

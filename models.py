@@ -3,6 +3,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import hashlib
+import json
 
 db = SQLAlchemy()
 
@@ -21,6 +22,13 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
     login_count = db.Column(db.Integer, default=0)
+    
+    # 用户级API配置
+    api_key = db.Column(db.Text, nullable=True)
+    api_base = db.Column(db.String(500), default='https://dashscope.aliyuncs.com/compatible-mode/v1')
+    model = db.Column(db.String(100), default='qwen-plus-0806')
+    model_t2i = db.Column(db.String(100), default='wan2.2-t2i-flash')
+    api_configured_at = db.Column(db.DateTime, nullable=True)
     
     # 关联聊天消息
     messages = db.relationship('ChatMessage', backref='user', lazy='dynamic', cascade='all, delete-orphan')
@@ -53,6 +61,32 @@ class User(UserMixin, db.Model):
         """更新登录信息"""
         self.last_login = datetime.utcnow()
         self.login_count += 1
+        db.session.commit()
+    
+    def has_valid_api_config(self):
+        """检查用户是否有有效的API配置"""
+        if not self.api_key:
+            return False, '未配置API Key'
+        
+        # 简单验证API Key格式（阿里云百炼通常以sk-开头）
+        if not self.api_key.startswith('sk-'):
+            return False, 'API Key格式无效'
+        
+        if len(self.api_key) < 20:
+            return False, 'API Key长度过短'
+        
+        return True, 'API配置有效'
+    
+    def update_api_config(self, api_key, api_base=None, model=None, model_t2i=None):
+        """更新用户的API配置"""
+        self.api_key = api_key
+        if api_base:
+            self.api_base = api_base
+        if model:
+            self.model = model
+        if model_t2i:
+            self.model_t2i = model_t2i
+        self.api_configured_at = datetime.utcnow()
         db.session.commit()
     
     def to_dict(self):
@@ -174,3 +208,81 @@ def init_db(app):
             print("   测试用户 - 用户名: test, 密码: test123")
         
         print("✅ 数据库初始化完成")
+
+
+class SystemConfig(db.Model):
+    """系统配置模型"""
+    __tablename__ = 'system_configs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    config_key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    config_value = db.Column(db.Text, nullable=True)
+    config_type = db.Column(db.String(50), default='string')  # string, json, integer, boolean
+    description = db.Column(db.Text, nullable=True)
+    is_encrypted = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    def __init__(self, config_key, config_value, config_type='string', description=None, is_encrypted=False):
+        self.config_key = config_key
+        self.config_value = config_value
+        self.config_type = config_type
+        self.description = description
+        self.is_encrypted = is_encrypted
+    
+    def get_value(self):
+        """获取配置值，根据类型进行转换"""
+        if not self.config_value:
+            return None
+        
+        try:
+            if self.config_type == 'json':
+                return json.loads(self.config_value)
+            elif self.config_type == 'integer':
+                return int(self.config_value)
+            elif self.config_type == 'boolean':
+                return self.config_value.lower() in ('true', '1', 'yes')
+            else:
+                return self.config_value
+        except (json.JSONDecodeError, ValueError):
+            return self.config_value
+    
+    def set_value(self, value):
+        """设置配置值，根据类型进行转换"""
+        if value is None:
+            self.config_value = None
+        elif self.config_type == 'json':
+            self.config_value = json.dumps(value, ensure_ascii=False)
+        else:
+            self.config_value = str(value)
+        
+        self.updated_at = datetime.utcnow()
+    
+    @staticmethod
+    def get_config(key, default=None):
+        """获取配置值的静态方法"""
+        config = SystemConfig.query.filter_by(config_key=key).first()
+        if config:
+            return config.get_value()
+        return default
+    
+    @staticmethod
+    def set_config(key, value, config_type='string', description=None, user_id=None):
+        """设置配置值的静态方法"""
+        config = SystemConfig.query.filter_by(config_key=key).first()
+        if config:
+            config.set_value(value)
+            config.updated_by = user_id
+        else:
+            config = SystemConfig(
+                config_key=key,
+                config_value=str(value) if value is not None else None,
+                config_type=config_type,
+                description=description
+            )
+            config.updated_by = user_id
+            db.session.add(config)
+        
+        db.session.commit()
+        return config

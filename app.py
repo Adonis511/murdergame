@@ -7,7 +7,7 @@ import os
 import secrets
 from datetime import datetime
 from config import Config
-from models import db, User, ChatMessage, LoginLog, init_db
+from models import db, User, ChatMessage, LoginLog, SystemConfig, init_db
 from ai_service import ai_service
 
 # 导入游戏API蓝图
@@ -93,6 +93,107 @@ class MessageForm(FlaskForm):
     """消息表单"""
     content = TextAreaField('消息内容', validators=[DataRequired(), Length(1, 2000)])
     submit = SubmitField('发送')
+
+class APIConfigForm(FlaskForm):
+    """API配置表单"""
+    api_key = StringField('阿里云百炼 API Key', validators=[
+        DataRequired(message='API Key不能为空'),
+        Length(10, 200, message='API Key长度应在10-200个字符之间')
+    ])
+    api_base = StringField('API基础URL', validators=[
+        Optional(),
+        Length(0, 500, message='URL长度不能超过500个字符')
+    ], default='https://dashscope.aliyuncs.com/compatible-mode/v1')
+    model = StringField('默认模型', validators=[
+        Optional(),
+        Length(0, 100, message='模型名称长度不能超过100个字符')
+    ], default='qwen-plus-0806')
+    model_t2i = StringField('图片生成模型', validators=[
+        Optional(),
+        Length(0, 100, message='模型名称长度不能超过100个字符')
+    ], default='wan2.2-t2i-flash')
+    test_connection = BooleanField('测试连接', default=True)
+    submit = SubmitField('保存配置')
+
+def test_api_connection(api_key, api_base=None):
+    """测试API连接有效性"""
+    try:
+        import openai
+        import requests
+        
+        # 如果没有指定api_base，使用默认值
+        if not api_base:
+            api_base = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        
+        # 创建OpenAI客户端进行测试
+        client = openai.OpenAI(
+            api_key=api_key,
+            base_url=api_base
+        )
+        
+        # 发送一个简单的测试请求
+        response = client.chat.completions.create(
+            model="qwen-plus-0806",
+            messages=[
+                {"role": "system", "content": "你是一个测试助手"},
+                {"role": "user", "content": "请回复'连接测试成功'"}
+            ],
+            max_tokens=10,
+            timeout=10
+        )
+        
+        if response and response.choices:
+            return {
+                'success': True,
+                'message': '连接测试成功！API Key有效。',
+                'response': response.choices[0].message.content.strip()
+            }
+        else:
+            return {
+                'success': False,
+                'message': 'API响应异常，请检查配置。'
+            }
+            
+    except openai.AuthenticationError:
+        return {
+            'success': False,
+            'message': 'API Key无效或已过期，请检查您的阿里云百炼API Key。'
+        }
+    except openai.RateLimitError:
+        return {
+            'success': False,
+            'message': 'API请求频率超限，请稍后再试。'
+        }
+    except openai.APIError as e:
+        return {
+            'success': False,
+            'message': f'API服务错误: {str(e)}'
+        }
+    except requests.exceptions.Timeout:
+        return {
+            'success': False,
+            'message': '连接超时，请检查网络连接或API基础URL。'
+        }
+    except requests.exceptions.ConnectionError:
+        return {
+            'success': False,
+            'message': '无法连接到API服务，请检查网络连接和API基础URL。'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'测试失败: {str(e)}'
+        }
+
+def check_api_config(user=None):
+    """检查API配置是否有效"""
+    if not user:
+        user = current_user
+    
+    if not user.is_authenticated:
+        return False, '用户未登录'
+    
+    return user.has_valid_api_config()
 
 @app.route('/')
 def index():
@@ -323,10 +424,66 @@ def delete_all_users():
             'message': f'删除用户失败: {str(e)}'
         }), 500
 
+@app.route('/admin/api-config', methods=['GET', 'POST'])
+@login_required
+def api_config():
+    """API配置管理页面"""
+    # 检查用户权限（暂时允许所有登录用户配置）
+    form = APIConfigForm()
+    
+    if request.method == 'GET':
+        # 加载当前用户的配置
+        form.api_key.data = current_user.api_key or ''
+        form.api_base.data = current_user.api_base or 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+        form.model.data = current_user.model or 'qwen-plus-0806'
+        form.model_t2i.data = current_user.model_t2i or 'wan2.2-t2i-flash'
+    
+    if form.validate_on_submit():
+        try:
+            # 如果勾选了测试连接，先验证API Key
+            if form.test_connection.data:
+                test_result = test_api_connection(form.api_key.data, form.api_base.data)
+                if not test_result['success']:
+                    flash(f'API连接测试失败: {test_result["message"]}', 'error')
+                    return render_template('api_config.html', form=form)
+            
+            # 保存配置到当前用户
+            current_user.update_api_config(
+                api_key=form.api_key.data,
+                api_base=form.api_base.data,
+                model=form.model.data,
+                model_t2i=form.model_t2i.data
+            )
+            
+            if form.test_connection.data:
+                flash(f'API配置保存成功！连接测试: {test_result["message"]}', 'success')
+            else:
+                flash('API配置保存成功！', 'success')
+            
+            return redirect(url_for('api_config'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'保存配置失败: {str(e)}', 'error')
+    
+    # 获取当前配置状态
+    config_valid, config_message = check_api_config()
+    
+    return render_template('api_config.html', 
+                         form=form, 
+                         config_valid=config_valid, 
+                         config_message=config_message)
+
 @app.route('/chat')
 @login_required
 def chat():
     """剧本杀游戏界面路由（新版本）"""
+    # 检查API配置是否有效
+    config_valid, config_message = check_api_config()
+    if not config_valid:
+        flash(f'无法开始游戏：{config_message}。请先配置阿里云百炼API Key。', 'warning')
+        return redirect(url_for('api_config'))
+    
     return render_template('chat_v3.html', user=current_user)
 
 @app.route('/chat-old')
@@ -402,9 +559,12 @@ def send_message():
             'username': current_user.username
         }
         
-        # 生成AI回复
+        # 生成AI回复 - 使用当前用户的API配置
         try:
-            bot_reply = ai_service.generate_response(message, history_data)
+            # 为当前用户创建专属的AI服务实例
+            from ai_service import AIService
+            user_ai_service = AIService(user=current_user)
+            bot_reply = user_ai_service.generate_response(message, history_data)
         except Exception as e:
             print(f"AI服务错误: {e}")
             # 如果AI服务失败，使用备用回复
@@ -643,6 +803,9 @@ if __name__ == '__main__':
     # 初始化数据库
     init_db(app)
     
+    # 从数据库加载配置
+    Config.load_from_database(app)
+    
     print("🚀 聊天应用启动中...")
     print("=" * 50)
     print("📱 聊天界面: http://localhost:5000/chat")
@@ -650,6 +813,7 @@ if __name__ == '__main__':
         print("🎭 剧本杀游戏: http://localhost:5000/murder-mystery")
     print("🔑 登录页面: http://localhost:5000/login")
     print("📝 注册页面: http://localhost:5000/register")
+    print("⚙️ API配置: http://localhost:5000/admin/api-config")
     print("🔧 API状态: http://localhost:5000/api/status")
     print("📋 应用首页: http://localhost:5000/")
     print("=" * 50)

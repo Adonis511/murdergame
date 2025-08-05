@@ -219,6 +219,20 @@ main {
     font-size: 0.9em;
 }
 
+.config-btn {
+    color: #4ECDC4;
+    text-decoration: none;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+}
+
+.config-btn:hover {
+    background: rgba(78, 205, 196, 0.2);
+    color: #6EDCD5;
+}
+
 .logout-btn {
     color: #FF6B6B;
     text-decoration: none;

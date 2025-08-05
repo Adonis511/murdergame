@@ -6,12 +6,43 @@ from config import Config
 class AIService:
     """AI聊天服务类"""
     
-    def __init__(self):
+    def __init__(self, user=None):
         """初始化AI服务"""
-        self.client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
-        self.model = Config.MODEL
         self.max_tokens = Config.OPENAI_MAX_TOKENS
         self.temperature = Config.OPENAI_TEMPERATURE
+        
+        # 如果提供了用户，使用用户的API配置
+        if user and hasattr(user, 'api_key') and user.api_key:
+            try:
+                self.client = openai.OpenAI(
+                    api_key=user.api_key,
+                    base_url=user.api_base or Config.API_BASE
+                )
+                self.model = user.model or Config.MODEL
+                print(f"✅ 使用用户 {user.username} 的API配置")
+            except Exception as e:
+                print(f"⚠️ 使用用户API配置失败: {e}")
+                # 如果用户配置失败，使用默认配置
+                self.client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
+                self.model = Config.MODEL
+        else:
+            # 使用默认配置
+            try:
+                from models import SystemConfig
+                api_key = SystemConfig.get_config('api_key') or Config.API_KEY
+                api_base = SystemConfig.get_config('api_base') or Config.API_BASE
+                
+                self.client = openai.OpenAI(
+                    api_key=api_key,
+                    base_url=api_base
+                )
+                self.model = SystemConfig.get_config('model') or Config.MODEL
+                print("⚠️ 使用全局API配置")
+            except Exception as e:
+                # 如果无法从数据库读取，使用默认配置
+                print(f"⚠️ 从数据库读取API配置失败，使用默认配置: {e}")
+                self.client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
+                self.model = Config.MODEL
         
         # 系统提示词
         self.system_prompt = """你是一个友好、有帮助的AI助手。你的回答应该：

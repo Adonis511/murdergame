@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API配置 - 剧本杀探案团</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='mystery_auth.css') }}" rel="stylesheet">
+    <style>
+        .config-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #e94560 100%);
+            position: relative;
+            padding: 2rem 0;
+        }
+        
+        .config-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .config-header {
+            background: linear-gradient(45deg, #e94560, #f27121);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+        }
+        
+        .config-body {
+            padding: 2rem;
+        }
+        
+        .form-label {
+            color: #fff;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #e94560;
+            box-shadow: 0 0 0 0.2rem rgba(233, 69, 96, 0.25);
+            color: #fff;
+        }
+        
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .btn-mystery {
+            background: linear-gradient(45deg, #e94560, #f27121);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-mystery:hover {
+            background: linear-gradient(45deg, #d63384, #e56b1f);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }
+        
+        .btn-secondary-mystery {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary-mystery:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            transform: translateY(-1px);
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+        
+        .status-valid {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+        
+        .status-invalid {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+        
+        .help-text {
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.25rem;
+        }
+        
+        .api-info {
+            background: rgba(0, 123, 255, 0.1);
+            border: 1px solid rgba(0, 123, 255, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .api-info h6 {
+            color: #17a2b8;
+            margin-bottom: 0.5rem;
+        }
+        
+        .api-info p {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .api-info a {
+            color: #17a2b8;
+            text-decoration: none;
+        }
+        
+        .api-info a:hover {
+            color: #20c997;
+            text-decoration: underline;
+        }
+        
+        .form-check-input:checked {
+            background-color: #e94560;
+            border-color: #e94560;
+        }
+        
+        .form-check-label {
+            color: rgba(255, 255, 255, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景雾效 -->
+    <div class="mystery-bg"></div>
+    <div class="fog-overlay"></div>
+    
+    <div class="config-container">
+        <div class="container">
+            <div class="config-card">
+                <div class="config-header">
+                    <h2><i class="fas fa-user-cog me-2"></i>我的API配置</h2>
+                    <p class="mb-0">配置专属于您的阿里云百炼API密钥</p>
+                </div>
+                
+                <div class="config-body">
+                    <!-- 配置状态指示器 -->
+                    <div class="text-center">
+                        {% if config_valid %}
+                            <div class="status-indicator status-valid">
+                                <i class="fas fa-check-circle me-2"></i>
+                                您的API配置有效 - 可以开始游戏
+                            </div>
+                        {% else %}
+                            <div class="status-indicator status-invalid">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                {{ config_message }} - 您无法开始游戏
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- API信息说明 -->
+                    <div class="api-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>获取API Key步骤：</h6>
+                        <p>1. 访问 <a href="https://dashscope.console.aliyun.com/" target="_blank">阿里云百炼控制台</a></p>
+                        <p>2. 注册/登录阿里云账号</p>
+                        <p>3. 开通百炼服务</p>
+                        <p>4. 在"API Key管理"中创建新的API Key</p>
+                        <p>5. 复制API Key并粘贴到下方表单中</p>
+                    </div>
+                    
+                    <!-- 配置表单 -->
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <!-- API Key -->
+                        <div class="mb-3">
+                            {{ form.api_key.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-key"></i>
+                                </span>
+                                {{ form.api_key(class="form-control", placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx") }}
+                            </div>
+                            {% if form.api_key.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.api_key.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                API Key仅属于您个人，其他用户无法访问您的配置
+                            </div>
+                        </div>
+                        
+                        <!-- API基础URL -->
+                        <div class="mb-3">
+                            {{ form.api_base.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-link"></i>
+                                </span>
+                                {{ form.api_base(class="form-control") }}
+                            </div>
+                            {% if form.api_base.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.api_base.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">
+                                通常保持默认值即可
+                            </div>
+                        </div>
+                        
+                        <!-- 默认模型 -->
+                        <div class="mb-3">
+                            {{ form.model.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-robot"></i>
+                                </span>
+                                {{ form.model(class="form-control") }}
+                            </div>
+                            {% if form.model.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.model.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">
+                                用于文本生成和对话，推荐使用 qwen-plus-0806
+                            </div>
+                        </div>
+                        
+                        <!-- 图片生成模型 -->
+                        <div class="mb-3">
+                            {{ form.model_t2i.label(class="form-label") }}
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-image"></i>
+                                </span>
+                                {{ form.model_t2i(class="form-control") }}
+                            </div>
+                            {% if form.model_t2i.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.model_t2i.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">
+                                用于生成角色和线索图片，推荐使用 wan2.2-t2i-flash
+                            </div>
+                        </div>
+                        
+                        <!-- 测试连接选项 -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.test_connection(class="form-check-input") }}
+                                {{ form.test_connection.label(class="form-check-label") }}
+                            </div>
+                            <div class="help-text">
+                                保存前验证API Key是否有效（推荐开启）
+                            </div>
+                        </div>
+                        
+                        <!-- 按钮组 -->
+                        <div class="text-center">
+                            {{ form.submit(class="btn btn-mystery me-3") }}
+                            <a href="{{ url_for('chat') }}" class="btn btn-secondary-mystery">
+                                <i class="fas fa-arrow-left me-1"></i>返回游戏
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 底部链接 -->
+            <div class="text-center mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary-mystery btn-sm">
+                    <i class="fas fa-home me-1"></i>返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 表单提交时显示加载状态
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const submitBtn = document.querySelector('input[type="submit"]');
+            const originalText = submitBtn.value;
+            submitBtn.value = '保存中...';
+            submitBtn.disabled = true;
+            
+            // 如果表单验证失败，恢复按钮状态
+            setTimeout(() => {
+                if (submitBtn.disabled) {
+                    submitBtn.value = originalText;
+                    submitBtn.disabled = false;
+                }
+            }, 5000);
+        });
+        
+        // API Key输入框显示/隐藏功能
+        const apiKeyInput = document.querySelector('input[name="api_key"]');
+        if (apiKeyInput) {
+            apiKeyInput.type = 'password';
+            
+            // 添加显示/隐藏按钮
+            const inputGroup = apiKeyInput.closest('.input-group');
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'btn btn-outline-secondary';
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+            toggleBtn.onclick = function() {
+                if (apiKeyInput.type === 'password') {
+                    apiKeyInput.type = 'text';
+                    this.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                } else {
+                    apiKeyInput.type = 'password';
+                    this.innerHTML = '<i class="fas fa-eye"></i>';
+                }
+            };
+            
+            inputGroup.appendChild(toggleBtn);
+        }
+    </script>
+</body>
+</html>

@@ -30,9 +30,40 @@ class Config:
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = 3600  # 1小时
 
-    # LLM配置
+    # LLM配置 - 默认值，会在应用启动时从数据库更新
     API_BASE = os.environ.get('API_BASE') or "https://dashscope.aliyuncs.com/compatible-mode/v1"
     API_KEY = os.environ.get('API_KEY') or "sk-fb535aeda39f42d0b8f7039b98699374"
+    
+    @classmethod
+    def load_from_database(cls, app):
+        """从数据库加载配置"""
+        try:
+            with app.app_context():
+                from models import SystemConfig
+                
+                # 更新API配置
+                api_key = SystemConfig.get_config('api_key')
+                if api_key:
+                    cls.API_KEY = api_key
+                    cls.OPENAI_API_KEY = api_key
+                
+                api_base = SystemConfig.get_config('api_base')
+                if api_base:
+                    cls.API_BASE = api_base
+                
+                model = SystemConfig.get_config('model')
+                if model:
+                    cls.MODEL = model
+                    cls.OPENAI_MODEL = model
+                
+                model_t2i = SystemConfig.get_config('model_t2i')
+                if model_t2i:
+                    cls.MODEL_T2I = model_t2i
+                    
+                print("✅ 已从数据库加载API配置")
+                
+        except Exception as e:
+            print(f"⚠️ 从数据库加载配置失败，使用默认配置: {e}")
     
     # 剧本杀游戏流程配置
     GAME_PLAYER_SPEAK_TIME = int(os.environ.get('GAME_PLAYER_SPEAK_TIME', '180'))  # 玩家发言阶段时间(秒) - 默认3分钟

@@ -1139,11 +1139,17 @@ class GameFlowController {
         const disabledText = document.getElementById('disabledText');
         const contentInput = document.getElementById('contentInput');
         const sendBtn = document.getElementById('sendBtn');
+        const queryList = document.getElementById('queryList');
         
         // 保持输入区域可见，但显示禁用消息
         inputArea.style.display = 'block';
         phaseDisabled.style.display = 'flex';
         disabledText.textContent = message;
+        
+        // 关闭询问列表（如果打开的话）
+        if (queryList) {
+            queryList.style.display = 'none';
+        }
         
         // 禁用输入框和发送按钮
         if (contentInput) {

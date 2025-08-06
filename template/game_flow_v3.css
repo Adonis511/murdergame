@@ -1216,7 +1216,7 @@ main {
     justify-content: center;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(10px);
-    z-index: 100;
+    z-index: 1100; /* 提高z-index，确保覆盖询问列表(z-index: 1000) */
 }
 
 .disabled-message {

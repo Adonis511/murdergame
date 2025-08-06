@@ -10,6 +10,7 @@ class Config:
     # Flask基础配置
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here-change-in-production'
     DEBUG = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    PORT = 6888
     
     # 数据库配置
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///chat_app.db'

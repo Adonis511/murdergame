@@ -806,16 +806,16 @@ if __name__ == '__main__':
     # 从数据库加载配置
     Config.load_from_database(app)
     
-    print("🚀 聊天应用启动中...")
+    print("🚀 剧本杀游戏启动中...")
     print("=" * 50)
-    print("📱 聊天界面: http://localhost:5000/chat")
-    if GAME_API_AVAILABLE:
-        print("🎭 剧本杀游戏: http://localhost:5000/murder-mystery")
-    print("🔑 登录页面: http://localhost:5000/login")
-    print("📝 注册页面: http://localhost:5000/register")
-    print("⚙️ API配置: http://localhost:5000/admin/api-config")
-    print("🔧 API状态: http://localhost:5000/api/status")
-    print("📋 应用首页: http://localhost:5000/")
+    print("🎭 剧本杀游戏: http://localhost:{}/chat".format(Config.PORT))
+    # if GAME_API_AVAILABLE:
+    #     print("🎭 剧本杀游戏: http://localhost{}/murder-mystery")
+    print("🔑 登录页面: http://localhost:{}/login".format(Config.PORT))
+    print("📝 注册页面: http://localhost:{}/register".format(Config.PORT))
+    print("⚙️ API配置: http://localhost:{}/admin/api-config".format(Config.PORT))
+    print("🔧 API状态: http://localhost:{}/api/status".format(Config.PORT))
+    # print("📋 应用首页: http://localhost:5000/")
     print("=" * 50)
     print("🔐 默认账户:")
     print("   管理员 - 用户名: admin, 密码: admin123")
@@ -826,7 +826,7 @@ if __name__ == '__main__':
     # 启动Flask应用
     app.run(
         host='0.0.0.0',  # 允许外部访问
-        port=5000,       # 端口号
+        port=Config.PORT,       # 端口号
         debug=True,      # 调试模式
         threaded=True    # 多线程支持
     )

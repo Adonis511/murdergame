@@ -58,45 +58,87 @@
                 </a>
             </div>
             {% endif %}
-            <button class="control-btn" id="configBtn" onclick="showGameConfig()">⚙️ 配置</button>
-            <button class="control-btn" id="newGameBtn" onclick="startNewGame()">🎭 新游戏</button>
-            <button class="control-btn" id="loadGameBtn" onclick="loadExistingGame()">📂 加载游戏</button>
+
         </div>
     </div>
 
-    <!-- 游戏配置面板 -->
-    <div class="config-panel" id="configPanel" style="display: none;">
-        <h3>🎮 游戏配置</h3>
-        <div class="config-form">
-            <div class="config-group">
-                <label>剧本来源：</label>
-                <div class="radio-group">
-                    <label><input type="radio" name="scriptSource" value="generate" checked> 🆕 AI生成新剧本</label>
-                    <label><input type="radio" name="scriptSource" value="local"> 📁 使用本地剧本</label>
+
+
+    <!-- 游戏规则和开始界面 -->
+    <div class="game-welcome" id="gameWelcome">
+        <div class="welcome-container">
+            <div class="game-title">
+                <h1>🔍 剧本杀侦探游戏</h1>
+                <p class="game-subtitle">沉浸式AI剧本杀体验</p>
+            </div>
+            
+            <div class="game-rules">
+                <h2>🎮 游戏规则</h2>
+                <div class="rules-content">
+                    <div class="rule-section">
+                        <h3>📚 游戏流程</h3>
+                        <ul>
+                            <li><strong>章节制：</strong>游戏分为3个章节，每章包含重要线索</li>
+                            <li><strong>三阶段循环：</strong>每章进行3轮循环
+                                <ul>
+                                    <li>🎭 DM发言阶段 - 主持人讲述剧情和公布线索</li>
+                                    <li>💬 玩家发言阶段 - 所有玩家发言并互相询问(3分钟)</li>
+                                    <li>🗣️ 玩家回答阶段 - 被询问的玩家进行回复(1分钟)</li>
+                                </ul>
+                            </li>
+                            <li><strong>总结阶段：</strong>每章结束后DM进行总结，最后揭示真相</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rule-section">
+                        <h3>🎯 游戏目标</h3>
+                        <ul>
+                            <li>🔍 通过观察、推理和询问收集线索</li>
+                            <li>🧩 分析各角色的动机、机会和证据</li>
+                            <li>🏆 在游戏结束前找出真正的凶手</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rule-section">
+                        <h3>💡 游戏技巧</h3>
+                        <ul>
+                            <li>📝 仔细阅读你的角色剧本，了解背景信息</li>
+                            <li>❓ 善用询问机会，向其他玩家提出关键问题</li>
+                            <li>👀 观察其他角色的发言，寻找矛盾之处</li>
+                            <li>🤔 记住：每个人都可能是凶手，包括你自己</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
-            <div class="config-group" id="localPathGroup" style="display: none;">
-                <label>本地剧本路径：</label>
-                <input type="text" id="localScriptPath" placeholder="输入剧本文件夹路径">
-                <button class="browse-btn" onclick="browseLocalScripts()">浏览</button>
-            </div>
-            <div class="config-group">
-                <label><input type="checkbox" id="generateImages" checked> 🖼️ 生成角色图片</label>
-            </div>
-            <div class="config-actions">
-                <button class="control-btn cancel" onclick="hideGameConfig()">取消</button>
-                <button class="control-btn confirm" onclick="applyGameConfig()">应用配置</button>
+            
+            <div class="game-actions">
+                <button class="start-game-btn" onclick="startNewGameDirectly()">
+                    <i class="fas fa-play"></i>
+                    开始新游戏
+                </button>
             </div>
         </div>
     </div>
 
     <!-- 角色选择面板 -->
     <div class="character-selection" id="characterSelection" style="display: none;">
-        <h3>🎭 选择你的角色</h3>
+        <div class="selection-header">
+            <h3>🎭 选择你的角色</h3>
+            <div class="loading-spinner" id="characterLoadingSpinner">
+                <div class="spinner"></div>
+                <p>正在生成角色信息...</p>
+            </div>
+        </div>
         <div class="character-grid" id="characterGrid"></div>
-        <button class="control-btn confirm" id="confirmCharacterBtn" onclick="confirmCharacterSelection()" disabled>
-            确认角色选择
-        </button>
+        <div class="selection-actions">
+            <button class="control-btn confirm" id="confirmCharacterBtn" onclick="confirmCharacterSelection()" disabled>
+                <span class="btn-text">确认角色选择</span>
+                <div class="btn-loading" style="display: none;">
+                    <div class="spinner-small"></div>
+                    <span>加入游戏中...</span>
+                </div>
+            </button>
+        </div>
     </div>
 
     <!-- 主游戏界面 -->

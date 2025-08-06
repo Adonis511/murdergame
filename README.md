@@ -1,322 +1,249 @@
-# 🤖 AI聊天应用
+# 🎭 剧本杀探案团 (Murder Mystery Game)
 
-一个基于Flask和OpenAI的智能聊天应用，支持完整的Markdown语法、用户认证和真实AI对话。
+一个基于AI的多人在线剧本杀游戏平台，支持智能DM主持、角色扮演和案件推理。
 
-## ✨ 功能特色
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
+![Flask](https://img.shields.io/badge/Flask-2.3.3-green.svg)
+![OpenAI](https://img.shields.io/badge/OpenAI-Compatible-orange.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-- 🤖 **真实AI对话** - 集成OpenAI GPT-3.5-turbo模型
-- 🧠 **上下文理解** - 支持多轮对话和历史记忆
-- 🎨 **现代化UI设计** - 简洁美观的聊天界面
-- 📝 **Markdown支持** - 完整支持Markdown语法渲染
-- 🌈 **代码高亮** - 自动识别并高亮显示代码块
-- 🔐 **用户认证系统** - 完整的注册、登录、会话管理
-- 💾 **数据持久化** - SQLite数据库存储聊天记录
-- 🔧 **可配置工具栏** - 灵活的工具按钮配置
-- 💾 **数据导出** - 支持JSON和Markdown格式导出
-- 📱 **响应式设计** - 适配各种屏幕尺寸
-- ⚡ **实时交互** - 流畅的用户体验
-- 🛠️ **REST API** - 完整的后端API接口
+## 🌟 核心特性
 
-## 📁 项目结构
+### 🎮 游戏功能
+- **AI智能主持**：自动生成剧本、角色和线索
+- **多人在线**：支持3-6人同时游戏
+- **实时互动**：WebSocket实时聊天和游戏状态同步
+- **角色扮演**：每个玩家获得独特角色和背景故事
+- **推理系统**：分阶段推理，包括发言、质疑、投票环节
+- **图片生成**：AI自动生成角色头像和线索图片
 
+### 🔐 用户系统
+- **个人账户**：每个用户独立的API配置和游戏记录
+- **安全认证**：Flask-Login身份验证
+- **API配置**：用户级阿里云百炼API密钥管理
+- **游戏历史**：保存聊天记录和游戏进度
+
+### 🎨 用户界面
+- **悬疑主题**：暗色调的神秘风格界面
+- **响应式设计**：支持桌面和移动端
+- **实时状态**：游戏阶段、计时器、玩家状态实时显示
+- **富文本支持**：Markdown格式的聊天消息
+
+## 🏗️ 技术架构
+
+### 后端技术栈
 ```
-murdergame/
-├── app.py                 # Flask主应用（用户认证、API路由）
-├── models.py              # 数据库模型（用户、消息、日志）
-├── config.py              # 应用配置（Flask、OpenAI等）
-├── ai_service.py          # AI服务模块（OpenAI API集成）
-├── install.py             # 自动安装脚本
-├── run.py                 # 启动脚本
-├── requirements.txt       # Python依赖
-├── README.md             # 项目说明
-├── test/                 # 测试和演示脚本
-│   ├── README.md         # 测试目录说明
-│   ├── test_player.py    # PlayerAgent功能测试
-│   └── demo_json_query.py # JSON格式演示
-└── template/             # 模板文件
-    ├── base.html         # 基础模板（导航栏、样式）
-    ├── index.html        # 首页模板
-    ├── login.html        # 登录页面
-    ├── register.html     # 注册页面
-    ├── profile.html      # 个人资料页面
-    ├── chat.html         # 聊天界面HTML
-    ├── chat.css          # 样式文件
-    ├── chat.js           # 前端交互逻辑
-    └── config.js         # 配置文件
+Flask (Web框架)
+├── Flask-SQLAlchemy (数据库ORM)
+├── Flask-Login (用户认证)
+├── Flask-WTF (表单处理)
+└── SQLite (数据库)
+
+AI集成
+├── OpenAI API (兼容阿里云百炼)
+├── GPT模型 (对话生成)
+└── DALL-E模型 (图片生成)
 ```
+
+### 前端技术栈
+```
+原生HTML/CSS/JavaScript
+├── Bootstrap 5 (UI框架)
+├── Font Awesome (图标)
+├── WebSocket (实时通信)
+└── Marked.js (Markdown渲染)
+```
+
+### 核心模块
+- **`app.py`** - Flask应用主文件，路由和API
+- **`models.py`** - 数据库模型定义
+- **`ai_service.py`** - AI服务封装
+- **`dm_agent.py`** - DM（主持人）智能代理
+- **`player_agent.py`** - 玩家智能代理
+- **`game.py`** - 游戏逻辑核心
+- **`game_api.py`** - 游戏API接口
 
 ## 🚀 快速开始
 
-### 方法一：自动安装（推荐）
+### 环境要求
+- Python 3.8+
+- pip包管理器
+- 阿里云百炼API密钥
 
+### 1. 克隆项目
 ```bash
-# 运行自动安装脚本
-python install.py
-
-# 启动应用
-python run.py
+git clone <repository-url>
+cd murdergame
 ```
 
-### 方法二：使用启动脚本
-
+### 2. 创建虚拟环境
 ```bash
-# 运行启动脚本（会检查依赖）
-python run.py
+# 创建虚拟环境
+python -m venv venv
+
+# 激活虚拟环境
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
 ```
 
-### 方法三：手动安装
-
+### 3. 安装依赖
 ```bash
-# 1. 安装依赖
 pip install -r requirements.txt
+```
 
-# 2. 启动应用
+### 4. 启动应用
+```bash
 python app.py
 ```
 
-### 3. 访问应用
+### 5. 访问应用
+打开浏览器访问：http://localhost:5000
 
-启动成功后，在浏览器中访问：
+## 🎯 使用指南
 
-- **聊天界面**: http://localhost:5000/chat
-- **登录页面**: http://localhost:5000/login
-- **注册页面**: http://localhost:5000/register
-- **个人资料**: http://localhost:5000/profile
-- **应用首页**: http://localhost:5000/
-- **API状态**: http://localhost:5000/api/status
-- **AI测试**: http://localhost:5000/api/ai/test
+### 首次使用
+1. **注册账户**：访问 `/register` 创建账户
+2. **配置API**：登录后点击设置图标配置阿里云百炼API密钥
+3. **开始游戏**：API配置完成后即可开始游戏
 
-## 🎮 使用指南
+### 获取API密钥
+1. 访问 [阿里云百炼控制台](https://dashscope.console.aliyun.com/)
+2. 注册/登录阿里云账号
+3. 开通百炼服务
+4. 在"API Key管理"中创建新的API Key
+5. 复制API Key到应用配置页面
 
-### 用户认证
-
-1. **注册账户**: 访问注册页面，填写用户名、邮箱、密码等信息
-2. **登录系统**: 使用注册的账户信息登录
-3. **默认账户**: 系统提供了测试账户（admin/admin123, test/test123）
-
-### AI聊天功能
-
-1. **智能对话**: 登录后进入聊天室，AI会根据你的消息智能回复
-2. **上下文理解**: AI能理解对话历史，提供连贯的回复
-3. **Markdown渲染**: AI回复支持完整的Markdown格式
-4. **多轮对话**: 支持复杂的多轮对话和话题切换
-
-### 基础操作
-
-1. **发送消息**: 在输入框中输入文本，按Enter或点击发送按钮
-2. **换行**: 按Shift+Enter可以在消息中换行
-3. **Markdown**: 直接输入Markdown语法，会自动渲染
-4. **聊天历史**: 点击用户菜单可以加载历史聊天记录
-
-### Markdown语法支持
-
-| 语法 | 效果 |
-|------|------|
-| `**粗体**` | **粗体文本** |
-| `*斜体*` | *斜体文本* |
-| `\`代码\`` | `行内代码` |
-| `# 标题` | 各级标题 |
-| `- 列表项` | 无序列表 |
-| `1. 列表项` | 有序列表 |
-| `> 引用` | 引用文本 |
-
-### 代码块示例
-
-````markdown
-```javascript
-function hello() {
-    console.log("Hello World!");
-}
+### 默认账户
 ```
-````
+管理员账户：
+用户名: admin
+密码: admin123
 
-### 工具按钮说明
+测试账户：
+用户名: test  
+密码: test123
+```
 
-- 🗑️ **清空**: 清空所有聊天记录
-- 💾 **保存**: 保存聊天记录为JSON文件
-- ⚙️ **设置**: 调整主题、字体等设置
-- ❓ **帮助**: 查看帮助文档
-- 📄 **导出**: 导出聊天记录为Markdown文件
+## 🎲 游戏规则
+
+### 游戏流程
+1. **角色分配**：每位玩家获得独特角色和背景
+2. **案件介绍**：DM介绍案件背景和基本信息
+3. **证据收集**：玩家查看线索和证据
+4. **自由讨论**：玩家可以自由交流和质疑
+5. **推理发言**：每人轮流发表推理观点
+6. **投票环节**：投票选出最可疑的人
+7. **真相揭晓**：DM公布真相和解析
+
+### 角色系统
+- **侦探**：拥有额外线索，推理能力强
+- **嫌疑人**：每人都有动机和不在场证明
+- **证人**：掌握关键信息片段
+- **凶手**：需要隐瞒真相，误导其他玩家
+
+### 胜利条件
+- **好人阵营**：找出真正的凶手
+- **凶手阵营**：成功隐瞒身份或误导其他人
 
 ## 🔧 配置说明
 
-### AI配置
-
-应用使用OpenAI API，相关配置在 `config.py` 中：
-
-```python
-class Config:
-    # OpenAI API配置
-    OPENAI_API_KEY = 'your-api-key-here'  # 你的OpenAI API密钥
-    OPENAI_MODEL = 'gpt-3.5-turbo'        # 使用的模型
-    OPENAI_MAX_TOKENS = 1000              # 最大回复长度
-    OPENAI_TEMPERATURE = 0.7              # 创造性程度(0-1)
-```
-
 ### 环境变量
-
-创建 `.env` 文件来配置环境变量：
-
+创建 `.env` 文件配置环境变量：
 ```env
-# OpenAI API配置
-OPENAI_API_KEY=sk-your-api-key-here
-
 # Flask配置
 SECRET_KEY=your-secret-key-here
 FLASK_DEBUG=True
 
-# AI聊天配置
-AI_MODEL=gpt-3.5-turbo
-AI_MAX_TOKENS=1000
-AI_TEMPERATURE=0.7
+# 数据库配置
+DATABASE_URL=sqlite:///chat_app.db
+
+# API配置（可选，优先使用用户配置）
+API_KEY=your-api-key-here
+API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+MODEL=qwen-plus-0806
+MODEL_T2I=wan2.2-t2i-flash
 ```
 
-### 工具栏配置
-
-在 `template/config.js` 中可以自定义工具按钮：
-
-```javascript
-toolButtons: [
-    {
-        id: 'customBtn',
-        icon: '<svg>...</svg>',
-        label: '自定义',
-        title: '自定义功能',
-        action: 'customAction',
-        visible: true
-    }
-]
-```
-
-### 主题配置
-
-支持浅色和深色主题，可在设置中切换或通过配置文件自定义：
-
-```javascript
-themes: {
-    custom: {
-        name: '自定义主题',
-        primary: '#your-color',
-        background: '#your-bg',
-        // ...更多配置
-    }
-}
-```
-
-## 🌐 API接口
-
-### 发送消息
-
+### 数据库初始化
+应用首次启动时会自动创建数据库和默认用户。如需重置：
 ```bash
-POST /api/chat/send
-Content-Type: application/json
+# 删除数据库文件
+rm instance/chat_app.db
 
-{
-    "message": "你的消息内容"
-}
+# 重新启动应用
+python app.py
 ```
 
-### 获取聊天历史
+## 🔍 故障排除
 
+### 常见问题
+
+**Q: API连接失败怎么办？**
+A: 检查API密钥是否正确，网络连接是否正常，确保API服务可用。
+
+**Q: 无法注册新用户？**
+A: 检查用户名是否已被使用，邮箱格式是否正确（邮箱可选填）。
+
+**Q: 游戏页面空白？**
+A: 确保已配置有效的API密钥，检查浏览器控制台是否有错误信息。
+
+**Q: 图片无法生成？**
+A: 确认API密钥有图片生成权限，检查网络连接和API服务状态。
+
+### 日志调试
+应用运行时会在控制台输出详细日志：
 ```bash
-GET /api/chat/history
+python app.py
+# 查看API调用、用户操作、错误信息等
 ```
 
-### 获取配置信息
+## 🤝 开发指南
 
-```bash
-GET /api/config
+### 项目结构
+```
+murdergame/
+├── app.py              # Flask应用入口
+├── config.py           # 配置文件
+├── models.py           # 数据库模型
+├── ai_service.py       # AI服务封装
+├── dm_agent.py         # DM智能代理
+├── player_agent.py     # 玩家智能代理
+├── game.py             # 游戏逻辑
+├── game_api.py         # 游戏API
+├── openai_utils.py     # OpenAI工具函数
+├── requirements.txt    # Python依赖
+├── template/           # HTML模板
+│   ├── base.html
+│   ├── login.html
+│   ├── register.html
+│   ├── chat_v3.html
+│   ├── api_config.html
+│   └── *.css/*.js
+├── instance/           # 数据库文件
+├── images/             # 生成的图片
+├── log/                # 游戏日志
+└── test/               # 测试文件
 ```
 
-### API状态检查
-
-```bash
-GET /api/status
-```
-
-### AI服务测试
-
-```bash
-GET /api/ai/test
-```
-
-### 消息意图分析
-
-```bash
-POST /api/ai/analyze
-Content-Type: application/json
-
-{
-    "message": "你的消息内容"
-}
-```
-
-## 🛠️ 开发说明
-
-### 技术栈
-
-- **后端**: Flask (Python)
-- **AI服务**: OpenAI GPT-3.5-turbo
-- **数据库**: SQLite + SQLAlchemy
-- **用户认证**: Flask-Login
-- **表单处理**: Flask-WTF + WTForms
-- **前端**: 原生JavaScript + HTML5 + CSS3
-- **UI框架**: Bootstrap 5
-- **Markdown**: Marked.js
-- **代码高亮**: Highlight.js
-- **图标**: Font Awesome + SVG图标
-
-### 自定义开发
-
-1. **添加新的工具按钮**:
-   - 在 `config.js` 中添加按钮配置
-   - 在 `chat.js` 中实现对应的方法
-
-2. **修改AI行为**:
-   - 编辑 `ai_service.py` 中的系统提示词
-   - 调整模型参数（temperature、max_tokens等）
-   - 添加新的AI功能接口
-
-3. **扩展数据库**:
-   - 在 `models.py` 中添加新的数据模型
-   - 创建数据库迁移脚本
-
-4. **修改样式**:
-   - 编辑 `chat.css` 和模板文件
-   - 使用CSS变量便于主题切换
-
-5. **扩展API**:
-   - 在 `app.py` 中添加新的路由
-   - 支持更多AI模型、第三方服务集成等
-
-6. **运行测试**:
-   - 查看 `test/` 目录中的测试脚本
-   - 运行 `python test/test_player.py` 测试AI玩家功能
-   - 运行 `python test/demo_json_query.py` 查看JSON格式演示
-
-### 环境要求
-
-- Python 3.7+
-- OpenAI API密钥
-- 现代浏览器（支持ES6+）
+### 扩展开发
+- **添加新角色类型**：修改 `dm_agent.py` 中的角色生成逻辑
+- **自定义剧本**：在 `game.py` 中添加剧本模板
+- **UI主题**：修改 `template/` 下的CSS文件
+- **API集成**：在 `ai_service.py` 中添加新的API支持
 
 ## 📄 许可证
 
-本项目采用MIT许可证，详见LICENSE文件。
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-## 🤝 贡献
+## 🙏 致谢
 
-欢迎提交Issue和Pull Request来改进这个项目！
-
-## 📞 支持
-
-如果遇到问题或需要帮助，请：
-
-1. 查看本README文档
-2. 检查浏览器控制台是否有错误信息
-3. 确认所有依赖已正确安装
-4. 验证Python版本兼容性
+- [Flask](https://flask.palletsprojects.com/) - 优秀的Python Web框架
+- [OpenAI](https://openai.com/) - 强大的AI API服务
+- [阿里云百炼](https://dashscope.console.aliyun.com/) - 国内AI服务平台
+- [Bootstrap](https://getbootstrap.com/) - 现代化的CSS框架
 
 ---
 
-💡 **提示**: 这个聊天界面可以很容易地集成到现有项目中，或者作为独立的聊天工具使用。
+**🎭 开始你的推理之旅吧！每个人都可能是凶手，真相只有一个！**

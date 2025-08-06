@@ -130,8 +130,20 @@ class GameFlowController {
         if (savedSession) {
             this.gameState.gameSession = savedSession;
             this.checkGameStatus();
+        } else {
+            // 没有现有游戏，显示欢迎界面
+            this.showWelcomeScreen();
         }
     }
+    
+    showWelcomeScreen() {
+        console.log('🎮 【界面】显示游戏欢迎界面');
+        document.getElementById('gameWelcome').style.display = 'flex';
+        document.getElementById('characterSelection').style.display = 'none';
+        document.getElementById('gameMain').style.display = 'none';
+    }
+    
+
     
     async checkGameStatus() {
         if (!this.gameState.gameSession) return;
@@ -170,74 +182,22 @@ class GameFlowController {
     
     // ================== 游戏配置管理 ==================
     
-    showGameConfig() {
-        document.getElementById('configPanel').style.display = 'block';
-    }
 
-    hideGameConfig() {
-        document.getElementById('configPanel').style.display = 'none';
-    }
-
-    applyGameConfig() {
-        const scriptSource = document.querySelector('input[name="scriptSource"]:checked').value;
-        const localScriptPath = document.getElementById('localScriptPath').value;
-        const generateImages = document.getElementById('generateImages').checked;
-
-        if (scriptSource === 'local' && !localScriptPath.trim()) {
-            this.showToast('请选择本地剧本路径', 'warning');
-            return;
-        }
-
-        this.gameState.config = {
-            scriptSource,
-            localScriptPath: localScriptPath.trim(),
-            generateImages
-        };
-
-        this.hideGameConfig();
-        this.showToast('配置已保存', 'success');
-    }
-
-    async browseLocalScripts() {
-        try {
-            const response = await fetch('/api/game/list');
-            const data = await response.json();
-            
-            if (data.status === 'success' && data.data.games.length > 0) {
-                this.showLocalScriptsModal(data.data.games);
-            } else {
-                this.showToast('未找到可用的本地剧本', 'warning');
-            }
-        } catch (error) {
-            console.error('浏览本地剧本失败:', error);
-            this.showToast('浏览失败，请重试', 'error');
-        }
-    }
     
     // ================== 游戏启动管理 ==================
     
-    async startNewGame() {
-        if (!this.gameState.config) {
-            this.showToast('请先配置游戏参数', 'warning');
-            this.showGameConfig();
-            return;
-        }
 
-        const config = this.gameState.config;
-        
-        if (config.scriptSource === 'local') {
-            await this.loadExistingGame(config.localScriptPath);
-        } else {
-            await this.createNewGame(config.generateImages);
-        }
-    }
 
     async createNewGame(generateImages = true) {
         try {
             console.log('🎭 【新游戏】开始创建新游戏');
             console.log(`🖼️ 生成图片: ${generateImages}`);
-            this.addSystemMessage('🎭 正在生成剧本...');
-            this.showProgressModal();
+            
+            // 隐藏欢迎界面，显示角色选择界面和加载动画
+            document.getElementById('gameWelcome').style.display = 'none';
+            document.getElementById('characterSelection').style.display = 'flex';
+            document.getElementById('characterLoadingSpinner').style.display = 'flex';
+            document.getElementById('characterGrid').style.display = 'none';
             
             const { response, data } = await this.apiRequest('/api/game/new', {
                 method: 'POST',
@@ -258,13 +218,15 @@ class GameFlowController {
                 if (generateImages) {
                     this.startProgressMonitoring(data.data.game_session);
                 } else {
-                    this.hideProgressModal();
+                    // 隐藏加载动画，显示角色选择
+                    document.getElementById('characterLoadingSpinner').style.display = 'none';
                     this.showCharacterSelection(data.data.characters);
-                    this.addSystemMessage('✅ 生成完成，请选择角色');
                 }
             } else {
-                this.hideProgressModal();
-                this.addSystemMessage('❌ 生成剧本失败：' + data.message);
+                // 加载失败，返回欢迎界面
+                document.getElementById('characterSelection').style.display = 'none';
+                document.getElementById('gameWelcome').style.display = 'flex';
+                this.showToast('❌ 生成剧本失败：' + data.message, 'error');
             }
         } catch (error) {
             console.error('启动新游戏失败:', error);
@@ -332,7 +294,12 @@ class GameFlowController {
             `;
         }).join('');
         
-        panel.style.display = 'block';
+        // 显示角色网格并添加加载完成动画
+        document.getElementById('characterGrid').style.display = 'grid';
+        setTimeout(() => {
+            document.getElementById('characterGrid').classList.add('loaded');
+        }, 100);
+        
         this.gameState.availableCharacters = characters;
     }
     
@@ -354,9 +321,12 @@ class GameFlowController {
          if (!this.gameState.selectedCharacter) return;
          
          try {
-             // 移除角色选择过程提示
+             // 显示加载动画
+             document.getElementById('confirmCharacterBtn').querySelector('.btn-text').style.display = 'none';
+             document.getElementById('confirmCharacterBtn').querySelector('.btn-loading').style.display = 'flex';
+             document.getElementById('confirmCharacterBtn').disabled = true;
              
-                         const { response, data } = await this.apiRequest('/api/game/join', {
+             const { response, data } = await this.apiRequest('/api/game/join', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -365,6 +335,7 @@ class GameFlowController {
                     user_id: this.gameState.user.id
                 })
             });
+             
              if (data.status === 'success') {
                  this.gameState.currentCharacter = this.gameState.selectedCharacter;
                  this.gameState.gameMode = 'playing';
@@ -2172,41 +2143,19 @@ class GameFlowController {
 
 // ================== 全局函数 ==================
 
-function showGameConfig() {
+function startNewGameDirectly() {
     if (window.gameController) {
-        window.gameController.showGameConfig();
+        console.log('🎮 【直接开始】点击开始新游戏，使用默认配置');
+        // 直接创建新游戏，使用默认配置（生成图片 = true）
+        window.gameController.createNewGame(true);
     }
 }
 
-function hideGameConfig() {
-    if (window.gameController) {
-        window.gameController.hideGameConfig();
-    }
-}
 
-function applyGameConfig() {
-    if (window.gameController) {
-        window.gameController.applyGameConfig();
-    }
-}
 
-function browseLocalScripts() {
-    if (window.gameController) {
-        window.gameController.browseLocalScripts();
-    }
-}
 
-function startNewGame() {
-    if (window.gameController) {
-        window.gameController.startNewGame();
-    }
-}
 
-function loadExistingGame() {
-    if (window.gameController) {
-        window.gameController.loadExistingGame();
-    }
-}
+
 
 function selectCharacter(characterName, index) {
     if (window.gameController) {

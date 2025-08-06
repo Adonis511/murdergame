@@ -107,17 +107,13 @@ class GameFlowController {
                  
                  console.log('游戏配置加载成功:', this.config);
                  
-                 // 如果有默认剧本路径，自动设置配置
-                 if (this.config.defaultScriptPath) {
-                     this.gameState.config = {
-                         scriptSource: 'local',
-                         localScriptPath: this.config.defaultScriptPath,
-                         generateImages: true
-                     };
-                     
-                     // 更新配置界面
-                     this.updateConfigUI();
-                 }
+                                 // 默认剧本路径将由后端自动处理
+                console.log(`📁 配置的默认剧本路径: ${this.config.defaultScriptPath || '无'}`);
+                if (this.config.defaultScriptPath) {
+                    console.log(`✅ 将使用本地剧本: ${this.config.defaultScriptPath}`);
+                } else {
+                    console.log(`🎭 将生成新剧本`);
+                }
              }
          } catch (error) {
              console.error('加载游戏配置失败:', error);
@@ -305,16 +301,25 @@ class GameFlowController {
     
          selectCharacter(characterName, index) {
          console.log(`👤 【角色选择】选择角色: ${characterName} (索引: ${index})`);
-         document.querySelectorAll('.character-card').forEach(card => {
+         
+         // 移除所有选中状态
+         document.querySelectorAll('.character-card').forEach((card, cardIndex) => {
              card.classList.remove('selected');
+             console.log(`🔄 【角色选择】移除角色 ${cardIndex} 的选中状态`);
          });
          
-         document.querySelectorAll('.character-card')[index].classList.add('selected');
+         // 添加选中状态到目标角色
+         const targetCard = document.querySelectorAll('.character-card')[index];
+         if (targetCard) {
+             targetCard.classList.add('selected');
+             console.log(`✅ 【角色选择】角色 ${index} 已设为选中状态`);
+             console.log(`🎨 【角色选择】角色卡片类名:`, targetCard.className);
+         } else {
+             console.error(`❌ 【角色选择】找不到索引为 ${index} 的角色卡片`);
+         }
          
          this.gameState.selectedCharacter = characterName;
          document.getElementById('confirmCharacterBtn').disabled = false;
-         
-         // 移除角色选择确认提示，界面已有足够的视觉反馈
      }
     
          async confirmCharacterSelection() {

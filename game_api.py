@@ -85,8 +85,20 @@ def create_new_game():
         print(f"🖼️ 生成图片: {generate_images}")
         print(f"⏳ 等待完成: {wait_for_completion}")
         
-        # 创建新游戏实例
-        game = Game(script_path=None, generate_images=generate_images)
+        # 检查是否配置了默认剧本路径
+        from config import Config
+        default_script_path = Config.DEFAULT_SCRIPT_PATH
+        
+        # 如果配置了默认剧本路径且路径存在，使用本地剧本；否则生成新剧本
+        script_path = None
+        if default_script_path and os.path.exists(default_script_path):
+            print(f"📁 使用配置的本地剧本: {default_script_path}")
+            script_path = default_script_path
+        else:
+            print("🎭 生成新剧本 (无本地剧本配置或路径不存在)")
+        
+        # 创建游戏实例
+        game = Game(script_path=script_path, generate_images=generate_images)
         
         # 生成会话ID
         session_id = f"game_{int(time.time())}_{current_user.id}"

@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from typing import List
 from openai_utils import create_openai_client
+from agent_logger import log_dm_speak_call
 class DMAgent:
     def __init__(self):
         # self.name = name
@@ -201,6 +202,17 @@ class DMAgent:
         """
         print(f"🎭 DM正在准备发言...")
         
+        # 记录输入参数到日志
+        input_params = {
+            'chapter': chapter,
+            'script': script,
+            'chat_history': chat_history,
+            'is_chapter_end': is_chapter_end,
+            'is_game_end': is_game_end,
+            'is_interject': is_interject,
+            'kwargs': kwargs
+        }
+        
         try:
             # 确定发言类型
             if is_game_end:
@@ -243,16 +255,26 @@ class DMAgent:
             print(f"✅ DM {speak_type} 发言生成完成")
             
             # 解析响应，检查是否包含工具调用
-            return self._parse_dm_response(response, script_data, kwargs.get('base_path', ''))
+            result = self._parse_dm_response(response, script_data, kwargs.get('base_path', ''))
+            
+            # 记录成功结果到日志
+            log_dm_speak_call(input_params, result)
+            
+            return result
             
         except Exception as e:
             print(f"❌ DM发言生成失败: {e}")
-            return {
+            error_result = {
                 'speech': self._get_speak_fallback(speak_type, chapter + 1),
                 'tools': [],
                 'success': False,
                 'error': str(e)
             }
+            
+            # 记录错误结果到日志
+            log_dm_speak_call(input_params, None, str(e))
+            
+            return error_result
     
     def _parse_dm_response(self, response: str, script_data: dict, base_path: str = "") -> dict:
         """
@@ -406,11 +428,29 @@ class DMAgent:
             return base_prompt + """
 
 当前任务：游戏过程中的穿插发言
-- 根据当前对话情况进行适当引导
-- 提供必要的提示或澄清
-- 控制游戏节奏
-- 适时推进剧情
-- 简短而有效，不要过度干预"""
+你需要让每次穿插发言都富有变化和惊喜：
+
+**发言内容多样化要求：**
+- 🎭 角色视角：以不同角色的视角描述当前情况
+- 🔍 线索引导：巧妙引入新线索或重新审视已知线索  
+- 🌟 剧情推进：推动故事向前发展，揭示新的情节点
+- 💡 思路启发：给玩家提供新的推理思路或怀疑方向
+- 🎪 氛围渲染：通过环境描写、心理描述增强沉浸感
+- ⚡ 意外转折：适时抛出意想不到的信息或发现
+
+**线索公布策略：**
+- 每个章节必须逐步公布该章节的线索，不要一次性全部公布
+- 在章节最后一轮讨论之前，确保该章节所有重要线索都已展示
+- 根据玩家讨论的热度和方向，适时引入相关线索
+- 用悬疑的方式展示线索，增加戏剧张力
+
+**发言风格变化：**
+- 有时像旁白叙述，有时像现场直播
+- 可以模拟证人描述、警方报告、新闻播报等不同风格
+- 适时加入环境音效描述、心理活动描述
+- 保持语言生动有趣，避免单调重复
+
+记住：你是游戏的灵魂，每一句话都应该让玩家更加投入游戏世界！"""
 
         return base_prompt
 

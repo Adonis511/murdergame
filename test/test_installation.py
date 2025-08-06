@@ -4,6 +4,10 @@
 测试脚本：验证新环境安装是否成功
 """
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def test_imports():
     """测试所有必要的包是否能正常导入"""
     print("🔍 测试包导入...")
@@ -51,7 +55,9 @@ def test_app_structure():
     """测试应用结构是否完整"""
     print("\n🔍 测试应用结构...")
     
-    import os
+    # 切换到父目录进行文件检查
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
     required_files = [
         'app.py',
         'config.py', 
@@ -62,13 +68,15 @@ def test_app_structure():
         'game.py',
         'game_api.py',
         'openai_utils.py',
+        'agent_logger.py',
         'requirements.txt',
         'README.md'
     ]
     
     missing_files = []
     for file in required_files:
-        if os.path.exists(file):
+        file_path = os.path.join(parent_dir, file)
+        if os.path.exists(file_path):
             print(f"✅ {file}")
         else:
             print(f"❌ {file}")

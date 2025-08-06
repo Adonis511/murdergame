@@ -2,6 +2,7 @@ from openai import OpenAI
 from config import Config
 from typing import List
 from openai_utils import create_openai_client
+from agent_logger import log_player_query_call, log_player_response_call
 class PlayerAgent:
     def __init__(self, name):
         self.name = name
@@ -37,6 +38,13 @@ class PlayerAgent:
         chat_history: 交谈历史，markdown，包含所有玩家和dm的发言，以及线索等要素
         return: 字典格式 {"content": "发言内容", "query": {"人名": "问题"}}
         '''
+        # 记录输入参数到日志
+        input_params = {
+            'scripts': scripts,
+            'chat_history': chat_history,
+            'method': 'query'
+        }
+        
         try:
             # 构建玩家当前已知的完整剧本信息
             current_script = self._build_current_script(scripts)
@@ -86,22 +94,35 @@ class PlayerAgent:
                 if not isinstance(response_data['query'], dict):
                     response_data['query'] = {}
                 
+                # 记录成功结果到日志
+                log_player_query_call(self.name, input_params, response_data)
+                
                 return response_data
                 
             except (json.JSONDecodeError, ValueError) as e:
                 print(f"⚠️ {self.name}的JSON解析失败: {e}")
                 # 返回默认格式
-                return {
+                fallback_result = {
                     "content": response if response else "**[保持沉默]**",
                     "query": {}
                 }
+                
+                # 记录解析失败到日志
+                log_player_query_call(self.name, input_params, fallback_result, f"JSON解析失败: {e}")
+                
+                return fallback_result
             
         except Exception as e:
             print(f"❌ {self.name}发言生成失败: {str(e)}")
-            return {
+            error_result = {
                 "content": f"**[{self.name}思考中...]**",
                 "query": {}
             }
+            
+            # 记录错误到日志
+            log_player_query_call(self.name, input_params, None, str(e))
+            
+            return error_result
     
     def _build_current_script(self, scripts: List[str]) -> str:
         """构建当前玩家已知的完整剧本"""
@@ -175,10 +196,11 @@ class PlayerAgent:
    - 谁的发言值得注意？
 
 2. **决策选择**：
+   - **积极参与**：剧本杀需要玩家积极参与交流，即使是第一轮也应该有所表态
    - **询问**：如果需要获取信息，可以向其他玩家提问（只能询问上述角色列表中的角色）
-   - **陈述**：如果需要分享信息或为自己辩护
-   - **分析**：如果需要分析已知线索
-   - **沉默**：如果当前不适合发言
+   - **陈述**：分享基本信息、表达立场或为自己辩护
+   - **分析**：分析已知线索或对当前情况的看法
+   - **避免完全沉默**：除非剧本明确要求保持沉默，否则应该有一定程度的参与
 
 3. **输出要求**：
    - 必须返回JSON格式，包含以下字段：
@@ -220,6 +242,15 @@ class PlayerAgent:
         query_player: 提问的玩家姓名（必填）
         return: 你的markdown格式回应
         '''
+        # 记录输入参数到日志
+        input_params = {
+            'scripts': scripts,
+            'chat_history': chat_history,
+            'query': query,
+            'query_player': query_player,
+            'method': 'response'
+        }
+        
         try:
             # 构建玩家当前已知的完整剧本信息
             current_script = self._build_current_script(scripts)
@@ -241,13 +272,23 @@ class PlayerAgent:
             
             # 确保返回合理的内容
             if not response or response.lower() in ['无', '不回答', '沉默', '']:
-                return "**[选择不回答]**"
+                result = "**[选择不回答]**"
+            else:
+                result = response
             
-            return response
+            # 记录成功结果到日志
+            log_player_response_call(self.name, input_params, result)
+            
+            return result
             
         except Exception as e:
             print(f"❌ {self.name}回应生成失败: {str(e)}")
-            return f"**[{self.name}无法回应...]**"
+            error_result = f"**[{self.name}无法回应...]**"
+            
+            # 记录错误到日志
+            log_player_response_call(self.name, input_params, None, str(e))
+            
+            return error_result
     
     def _build_response_prompt(self, current_script: str, chat_history: str, query: str, query_player: str) -> str:
         """构建回应提示词"""

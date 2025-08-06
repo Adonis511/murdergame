@@ -73,4 +73,4 @@ class Config:
     GAME_AI_RESPONSE_DELAY = int(os.environ.get('GAME_AI_RESPONSE_DELAY', '3'))  # AI玩家回应延迟(秒) - 默认3秒
     
     # 默认剧本路径配置（如果为None或路径无效则使用AI生成）
-    DEFAULT_SCRIPT_PATH = os.environ.get('DEFAULT_SCRIPT_PATH', 'log/250805154217')  # 例如: 'log/250805151240'
+    DEFAULT_SCRIPT_PATH = os.environ.get('DEFAULT_SCRIPT_PATH', None)  # 例如: 'log/250805151240'
